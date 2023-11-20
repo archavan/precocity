@@ -4,7 +4,6 @@
 
 # Session Data files
 .RData
-.RDataTmp
 
 # User-specific files
 .Ruserdata
@@ -39,11 +38,35 @@ vignettes/*.pdf
 # R Environment Variables
 .Renviron
 
-# pkgdown site
+### additions below this ===========
+# rendered notebooks
+*.nb.html
+*.html
+
+# misc
+*.tif
+*.jpg
+*.png
+*.xlsx
+*.zip
+*.xls
+*.pptx
+*.ppt
+*.docx
+*.doc
+.DS_Store
+
+# docs, notes, data, etc
 docs/
+notes/
+data/
 
-# translation temp files
-po/*~
+# temp folder
+**/temp
 
-# RStudio Connect folder
-rsconnect/
+# analysis output
+**/results
+
+# log files
+*.log
+*.out
