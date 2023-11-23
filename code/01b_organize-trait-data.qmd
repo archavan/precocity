@@ -1,0 +1,218 @@
+---
+title: Clean and organize trait data
+author: Arun Chavan
+format: 
+  html:
+    theme: cosmo
+    self-contained: true
+toc: true
+editor: source
+fontsize: 0.95em
+---
+
+Started: 2023-11-20  
+Last edited: `r format(Sys.time())`
+
+# Setup
+```{r}
+#| message: false
+#| warning: false
+
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
+
+library(tidyverse)
+library(here)
+library(readxl)
+```
+
+# Data
+```{r}
+#| warning: false
+#| message: false
+
+# traits
+kd <- read_excel(here("data/traits/MP-KD/MammaliaData_MP_KD_20161207.xlsx"), 
+                 na = c("", "NA"))
+pt <- read_tsv(here("data/traits/PanTHERIA/PanTHERIA_1-0_WR05_Aug2008.txt"),
+               na = c(-999, "-999", "", "NA"), guess_max = 10000)
+mv <- read_csv(here("data/traits/Myhrvold/Amniote_Database_Aug_2015.csv"), 
+               na = "-999", guess_max = 10000)
+
+# list of mammalian orders 
+source(here("code/utilities_mammalian-orders.R"))
+```
+
+Keep relevant variables and clean up: 
+
+```{r}
+pt <- pt %>% 
+  select(order = MSW05_Order, 
+         family = MSW05_Family, 
+         genus = MSW05_Genus, 
+         species = MSW05_Species, 
+         binomial = MSW05_Binomial,
+         adult_body_mass_g = `5-1_AdultBodyMass_g`,
+         gestation_len_d = `9-1_GestationLen_d`,
+         litter_size = `15-1_LitterSize`,
+         age_at_eye_opening_d = `2-1_AgeatEyeOpening_d`,
+         weaning_age_d = `25-1_WeaningAge_d`,
+         neonate_body_mass_g = `5-3_NeonateBodyMass_g`)
+
+pt$binomial <- str_replace_all(pt$binomial, "\\s+", "_")
+
+# replacing -999 with NA did not work in read_tsv
+replace_999 <- function(x) if_else(x == -999, NA, x)
+
+pt <- pt %>% 
+  mutate(across(where(is.double), replace_999))
+```
+
+```{r}
+mv <- mv %>% 
+  filter(class == "Mammalia") %>% 
+  select(order,
+         family,
+         genus, 
+         species,
+         common_name, 
+         litter_size = litter_or_clutch_size_n,
+         adult_body_mass_g,
+         gestation_len_d = gestation_d,
+         weaning_age_d = weaning_d,
+         neonate_body_mass_g = birth_or_hatching_weight_g) %>% 
+  mutate(binomial = paste0(genus, "_", species)) %>% 
+  relocate(binomial, .after = species)
+```
+
+```{r}
+kd <- kd %>% 
+  select(binomial = Species,
+         adult_body_mass_g = AdultBodyMass_g,
+         gestation_len_d = GestationLen_d,
+         age_at_eye_opening_d = AgeatEyeOpening_d,
+         litter_size = LitterSize,
+         precocity_kd = PrecocityAtBirth) %>% 
+  mutate(precocity_kd = str_to_lower(precocity_kd))
+```
+
+# Consolidate taxonomic information
+
+First create a list of all binomials with their taxonomic information from both PanTHERIA and Myhrvold. 
+
+```{r}
+spp <- bind_rows(myhrvold = select(mv, order, family, binomial),
+                 pantheria = select(pt, order, family, binomial), 
+                 .id = "source") %>% 
+  arrange(binomial)
+```
+
+## Resolve discordances between the two datasets
+
+If the family and order assignment between the datasets is the same for a given species, merge the information; if not, resolve the discordance. 
+
+```{r}
+spp_wide <- spp %>% 
+  pivot_wider(id_cols = "binomial", 
+              names_from = "source", 
+              values_from = c("order", "family"))
+```
+
+For species that are present in only dataset, we will use the order and family information from whichever dataset they are present in. 
+
+For species that are present in both datasets, but the order or family information is discordant between the two datasets, we need to resolve the discordance. There are only 10 such species, below. 
+
+```{r}
+spp_wide %>% 
+  filter(!is.na(order_myhrvold) & !is.na(order_pantheria)) %>% # present in both
+  filter(order_myhrvold != order_pantheria | 
+           family_myhrvold != family_pantheria)
+```
+
+The discordance is actually due to a misspelling of Indriidae ("The Indriidae (sometimes incorrectly spelled Indridae) are a family of strepsirrhine primates." from https://en.wikipedia.org/wiki/Indriidae). We just need to correct this spelling to resolve all discordances. 
+
+```{r}
+spp_wide <- spp_wide %>% 
+  mutate(family_myhrvold = str_replace(family_myhrvold, "Indridae", "Indriidae"),
+         family_pantheria = str_replace(family_pantheria, "Indridae", "Indriidae"))
+```
+
+Let's make sure that now we have no discordance. 
+
+```{r}
+spp_wide %>% 
+  filter(!is.na(order_myhrvold) & !is.na(order_pantheria)) %>% # present in both
+  filter(order_myhrvold != order_pantheria | 
+           family_myhrvold != family_pantheria)
+```
+
+## Combine taxonomic information from both datasets
+
+Now that we have resolved the discordance, we will keep only one column for order and one for family by coalescing information from the two datasets. 
+
+```{r}
+spp_resolved <- spp_wide %>% 
+  mutate(order = coalesce(order_pantheria, order_myhrvold),
+         family = coalesce(family_pantheria, family_myhrvold)) %>% 
+  select(binomial, order, family)
+```
+
+## Add infraclass and superorder information
+
+```{r}
+# turn the order list into a data frame
+mammal_orders <- bind_rows(
+  (enframe(Mammalia[[c("Eutheria")]],
+           name = "superorder", 
+           value = "order") %>% 
+     unnest_longer(order) %>% 
+     mutate(infraclass = "Eutheria")),
+  (enframe(Mammalia[c("Prototheria", "Metatheria")], 
+           name = "infraclass", 
+           value = "order") %>% 
+     unnest_longer(order))
+) %>% 
+  relocate(infraclass)
+```
+
+```{r}
+spp_resolved <- left_join(spp_resolved, mammal_orders, by = "order") %>% 
+  select(infraclass, superorder, order, family, binomial) %>% 
+  arrange(infraclass, superorder, order, family, binomial)
+```
+
+# Add taxonomic information to the trait datasets
+
+We will now add the consolidated taxonomic information to all three trait datasets. 
+```{r}
+pt <- pt %>% 
+  select(-order, -family, -genus, -species) %>% 
+  left_join(spp_resolved, by = "binomial") %>% 
+  relocate(infraclass, superorder, order, family)
+
+mv <- mv %>% 
+  select(-order, -family, -genus, -species) %>% 
+  left_join(spp_resolved, by = "binomial") %>% 
+  relocate(infraclass, superorder, order, family)
+
+kd <- kd %>% 
+  left_join(spp_resolved, by = "binomial") %>% 
+  relocate(infraclass, superorder, order, family)
+```
+
+# Write files
+
+```{r}
+# trait data
+fs::dir_create(here("data/01_cleaned"))
+write_csv(pt, here("data/01_cleaned/pantheria.csv"))
+write_csv(mv, here("data/01_cleaned/myhrvold.csv"))
+write_csv(kd, here("data/01_cleaned/mp-kd.csv"))
+
+# taxonomic information
+write_csv(spp_resolved, here("data/taxonomic-information.csv"))
+```
+
+# Session Info
+```{r session_info, eval=TRUE}
+sessionInfo()
+```
