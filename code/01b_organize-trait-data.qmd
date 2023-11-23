@@ -30,6 +30,10 @@ library(readxl)
 #| warning: false
 #| message: false
 
+# tree taxa
+dr12 <- read_csv(here("results/taxa/dosReis2012_all-taxa.csv"))
+up19 <- read_csv(here("results/taxa/upham2019_all-taxa.csv"))
+
 # traits
 kd <- read_excel(here("data/traits/MP-KD/MammaliaData_MP_KD_20161207.xlsx"), 
                  na = c("", "NA"))
@@ -199,6 +203,19 @@ kd <- kd %>%
   relocate(infraclass, superorder, order, family)
 ```
 
+# Prune trait data to species in the trees
+
+```{r}
+pt_dr12 <- filter(pt, binomial %in% dr12$binomial)
+pt_up19 <- filter(pt, binomial %in% up19$binomial)
+
+mv_dr12 <- filter(mv, binomial %in% dr12$binomial)
+mv_up19 <- filter(mv, binomial %in% up19$binomial)
+
+kd_dr12 <- filter(kd, binomial %in% dr12$binomial)
+kd_up19 <- filter(kd, binomial %in% up19$binomial)
+```
+
 # Write files
 
 ```{r}
@@ -207,6 +224,14 @@ fs::dir_create(here("data/01_cleaned"))
 write_csv(pt, here("data/01_cleaned/pantheria.csv"))
 write_csv(mv, here("data/01_cleaned/myhrvold.csv"))
 write_csv(kd, here("data/01_cleaned/mp-kd.csv"))
+
+fs::dir_create(here("data/02_pruned"))
+write_csv(pt_dr12, here("data/02_pruned/pantheria_dosReis2012.csv"))
+write_csv(pt_up19, here("data/02_pruned/pantheria_upham2019.csv"))
+write_csv(mv_dr12, here("data/02_pruned/myhrvold_dosReis2012.csv"))
+write_csv(mv_up19, here("data/02_pruned/myhrvold_upham2019.csv"))
+write_csv(kd_dr12, here("data/02_pruned/mp-kd_dosReis2012.csv"))
+write_csv(kd_up19, here("data/02_pruned/mp-kd_upham2019.csv"))
 
 # taxonomic information
 write_csv(spp_resolved, here("data/taxonomic-information.csv"))
