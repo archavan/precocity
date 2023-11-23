@@ -61,6 +61,8 @@ docs/
 notes/
 data/
 
+**/temp.R
+
 # temp folder
 **/temp
 
