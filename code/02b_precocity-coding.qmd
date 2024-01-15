@@ -1,0 +1,358 @@
+---
+title: Coding precocity or altriciality status
+author: Arun Chavan
+format: 
+  html:
+    theme: cosmo
+    self-contained: true
+toc: true
+editor: source
+fontsize: 0.95em
+editor_options: 
+  chunk_output_type: inline
+---
+
+Started: 2023-11-22  
+Last edited: `r format(Sys.time())`
+
+# Background
+
+Here we:
+
+1. explore variables that are relevant for precocity and the association between them
+2. categorize species into precocial and altricial
+
+# Setup
+```{r, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
+
+library(tidyverse)
+library(here)
+library(plotly)
+```
+
+# Data
+
+```{r}
+#| message: false
+#| warning: false
+
+# pruned to species in the upham 2019 tree
+pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
+mv <- read_csv(here("data/02_pruned/myhrvold_upham2019.csv"))
+kd <- read_csv(here("data/02_pruned/mp-kd_upham2019.csv"))
+```
+
+# Compare PanTHERIA and Myhrvold datasets
+
+```{r}
+ptmv <- full_join(pt, 
+                  mv, 
+                  by = c("infraclass", "order", "family", "binomial"), 
+                  suffix = c("_pt", "_mv"))
+```
+
+## The two datasets are largely concordant
+
+Based on the adult body mass and gestation length comparison, the two datasets are largely concordant, with a small number of exceptions where the data for those species between the datasets is wildly different. Looking each of these species up individually, it seems like in some cases the PanTHERIA dataset has more reasonable values that agree with other sources while in other cases it's the Myhrvold dataset — there is no clearly worse dataset as a whole.
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+
+body_mass_comparison <- ggplot(ptmv, 
+                               aes(adult_body_mass_g_pt, 
+                                   adult_body_mass_g_mv,
+                                   label = binomial)) +
+  geom_point(alpha = 0.75) +
+  scale_x_log10() +
+  scale_y_log10() +
+  coord_equal() +
+  theme_bw()
+
+ggplotly(body_mass_comparison)
+```
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+
+gestation_comparison <- ggplot(ptmv, 
+                               aes(gestation_len_d_pt, 
+                                   gestation_len_d_mv,
+                                   label = binomial)) +
+  geom_point(alpha = 0.75) +
+  scale_x_log10() +
+  scale_y_log10() +
+  coord_equal() +
+  theme_bw()
+
+ggplotly(gestation_comparison)
+```
+
+## Number of species with necessary information
+
+For four of the variables of interest that are shared between the two datasets, Myhrvold dataset clearly has many more species with non-NA data. 
+
+```{r}
+pt %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g))
+
+mv %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g))
+```
+
+## PanTHERIA has "age at eye opening"
+
+However, the PanTHERIA dataset has the variable of age of eye opening, which is crucial for coding precocity, but it's missing from the Myhrvold dataset. 
+
+Therefore, for now, I will stick to using the PanTHERIA dataset, which is also the more popular one of the two. We still have more than 300 species for which we have non-NA data for all necessary variables. We lose prototherian data points, however, which is okay. 
+
+```{r}
+pt_non_na <-  pt %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g),
+         !is.na(age_at_eye_opening_d))
+
+pt_non_na
+
+count(pt_non_na, infraclass)
+```
+
+# Precocial/altricial coding
+
+One option is to follow the coding scheme of [Martin and MacLarnon (1985)](https://doi.org/10.1038/313220a0) for eutherian mammals:
+
+- Clearly precocial: 
+  - litter size less than 1.5 and
+  - eyes open at birth
+- Clearly altricial: 
+  - litter size is 3 or more and 
+  - eyes do not open until at least 5 days after birth
+- Intermediate: 
+  - litter size between 1.5 and 3 and 
+  - eyes open between 0 and 5 days of age
+  
+## Discretize litter size and age and eye opening.
+
+First, we discretize litter size and age at eye opening following Martin and MacLarnon. 
+
+```{r}
+pt_non_na <- pt_non_na %>% 
+    mutate(litter_size_discrete = case_when(
+      litter_size < 1.5 ~ "low", # <1.5
+      litter_size >= 1.5 & litter_size < 3 ~ "medium", # [1.5-3)
+      litter_size >= 3 ~ "high" # ≥3
+    )) %>% 
+    mutate(age_at_eye_opening_discrete = case_when(
+      age_at_eye_opening_d == 0 ~ "low", # 0
+      age_at_eye_opening_d > 0 & age_at_eye_opening_d < 5 ~ "medium", # (0-5)
+      age_at_eye_opening_d >= 5 ~ "high" # ≥5
+    )) %>% 
+  mutate(
+    litter_size_discrete = factor(litter_size_discrete, 
+                                  levels = c("low", "medium", "high")),
+    age_at_eye_opening_discrete = factor(age_at_eye_opening_discrete,
+                                         levels = c("low", "medium", "high"))
+  )
+```
+  
+The distribution of litter size coloured by discretized age at eye opening looks like this:
+
+```{r}
+ggplot(pt_non_na, aes(litter_size, fill = age_at_eye_opening_discrete)) +
+  geom_histogram(position = position_dodge(preserve = "single"), 
+                 alpha = 0.7, 
+                 color = "white", 
+                 bins = 25) +
+  facet_grid(rows = vars(infraclass),
+             scales = "free_y") +
+  theme_bw()
+```
+
+Table of discretized litter size and age at eye opening:
+
+```{r}
+table(pt_non_na$litter_size_discrete, 
+      pt_non_na$age_at_eye_opening_discrete, 
+      dnn = c("litter_size_discrete", 
+              "age_at_eye_opening_discrete")) 
+```
+
+## Coding based on the discretized variables. 
+
+Some marsupials that are obviously altricial can get incorrectly coded as intermediate by this scheme because they have a litter size close to 1. Therefore, we will code all prototherian and metatherian species and altricial and follow this scheme only for eutherians. 
+
+**resume here**
+
+```{r}
+knitr::knit_exit()
+```
+
+
+
+```{r}
+pt_non_na %>% 
+  mutate(precocity = case_when(
+    infraclass == "Metatheria" ~ "altricial",
+    litter_size >= 3 & age_at_eye_opening_d >= 5 ~ "altricial",
+    litter_size < 1.5 & age_at_eye_opening_d == 0 ~ "precocial",
+    litter_size > 1.5 & litter_size < 3 & 
+      age_at_eye_opening_d > 0 & age_at_eye_opening_d < 5 ~ "intermediate",
+    .default = NA_character_
+  )) %>% 
+  filter(is.na(precocity)) %>% 
+  print(n = Inf, width = Inf)
+```
+
+```{r}
+(
+  pt_non_na %>% 
+    ggplot(aes(adult_body_mass_g, gestation_len_d, 
+               color = age_at_eye_opening_discrete, 
+               label = binomial)) +
+    geom_point() +
+    scale_x_log10() +
+    scale_y_log10() +
+    geom_smooth(method = "lm")
+) %>% 
+  ggplotly()
+```
+  
+  
+  
+# Explore variables relevant for precocity
+
+## Neonatal body mass vs. adult body mass
+
+```{r}
+ggplot(pt, aes(adult_body_mass_g, neonate_body_mass_g)) +
+  geom_point(aes(color = infraclass)) +
+  scale_x_log10() +
+  scale_y_log10()
+```
+
+```{r}
+pt_neonate_nonna <- filter(pt, 
+                           !is.na(adult_body_mass_g) &
+                             !is.na(neonate_body_mass_g) &
+                             !is.na(age_at_eye_opening_d))
+
+lm_neonate_bm <- lm(log10(neonate_body_mass_g) ~ log10(adult_body_mass_g), pt_neonate_nonna)
+
+summary(lm_neonate_bm)
+
+broom::tidy(lm_neonate_bm)
+lm_neonate_bm_tidy <- bind_cols(pt_neonate_nonna, broom::augment(lm_neonate_bm))
+
+ggplot(lm_neonate_bm_tidy) +
+  geom_histogram(aes(.resid, fill = age_at_eye_opening_d > 5), 
+                 bins = 30, position = "identity", alpha = 1) +
+  facet_grid(rows = vars(infraclass), scales = "free_y") +
+  theme_bw()
+
+ggplot(lm_neonate_bm_tidy) +
+  geom_density(aes(.resid, 
+                   fill = age_at_eye_opening_d > 5), 
+               alpha = 0.75, 
+               position = "identity") +
+  facet_grid(rows = vars(infraclass), scales = "free_y") +
+  theme_bw()
+```
+
+## ratio of neonatal/adult body mass
+```{r}
+pt %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g),
+         !is.na(age_at_eye_opening_d)) %>% 
+  mutate(bm_ratio = neonate_body_mass_g/adult_body_mass_g) %>% 
+  ggplot(aes(bm_ratio, fill = age_at_eye_opening_d > 5)) +
+  geom_density(position = "identity", outline.type = "full", adjust = 0.25) +
+  facet_grid(rows = vars(infraclass), scales = "free_y")
+
+```
+
+
+```{r}
+knitr::knit_exit()
+```
+
+```{r}
+ggplot(pt, aes(gestation_len_d, litter_size)) +
+  geom_point(aes(color = infraclass)) +
+  scale_x_log10()
+```
+
+```{r}
+ggplot(pt, aes(gestation_len_d, age_at_eye_opening_d)) +
+  geom_point(aes(color = infraclass)) +
+  scale_x_log10()
+```
+
+```{r}
+ggplot(pt, aes(infraclass, age_at_eye_opening_d)) +
+  ggforce::geom_sina()
+
+ggplot(pt, aes(infraclass, neonate_body_mass_g)) +
+  ggforce::geom_sina() +
+  scale_y_log10()
+
+ggplot(pt, aes(gestation_len_d, age_at_eye_opening_d)) +
+  geom_point(aes(color = infraclass)) +
+  scale_x_log10()
+
+ggplot(pt, aes(adult_body_mass_g, neonate_body_mass_g)) +
+  geom_point(aes(fill = infraclass), 
+             size = 2, shape = 21, color = "white") +
+  scale_x_log10() +
+  scale_y_log10() +
+  # scale_color_manual(values = c("#fdc086","#beaed4", "#7fc97f")) +
+  scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3")) +
+  theme_bw()
+
+ggplot(pt, aes(age_at_eye_opening_d, litter_size)) +
+  geom_point(aes(color = infraclass))
+```
+
+
+
+
+First, we compare adult body mass vs gestation length using PanTHERIA vs Myhrvold datasets. 
+
+```{r}
+p <- ggplot(pt, aes(adult_body_mass_g, gestation_len_d, 
+               color = order, shape = infraclass)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal()
+
+test_plot_size(p, 10, 8)
+```
+
+```{r}
+ggplot(mv, aes(adult_body_mass_g, gestation_len_d,
+               color = infraclass)) +
+  geom_point() +
+  scale_x_log10() +
+  scale_y_log10() +
+  theme_minimal()
+```
+
+
+# Session Info
+```{r session_info, eval=TRUE}
+sessionInfo()
+```
+
