@@ -17,10 +17,7 @@ Last edited: `r format(Sys.time())`
 
 # Background
 
-Here we:
-
-1. explore variables that are relevant for precocity and the association between them
-2. categorize species into precocial and altricial
+Here we categorize species into precocial and altricial based on life history variables.
 
 # Setup
 ```{r, message=FALSE, warning=FALSE}
@@ -29,6 +26,7 @@ knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
 library(tidyverse)
 library(here)
 library(plotly)
+library(ggrepel)
 ```
 
 # Data
@@ -141,6 +139,12 @@ One option is to follow the coding scheme of [Martin and MacLarnon (1985)](https
   - litter size between 1.5 and 3 and 
   - eyes open between 0 and 5 days of age
   
+I will however use a modified version of this approach:
+
+- follow the same logic for clearly altricial, clearly precocial, and clearly intermediate as Martin and MacLarnon. (the diagonals in the table below)
+- For the species where age at eye opening is more than 5 days, code them as altricial regardless of the litter size. We can do this because this is a direct measure of developmental state at birth, unlike the litter size, which is a proxy. 
+- Everything else, to be coded manually. Look up the information for these species and code them as altricial or precocial based on the literature.
+  
 ## Discretize litter size and age and eye opening.
 
 First, we discretize litter size and age at eye opening following Martin and MacLarnon. 
@@ -187,169 +191,131 @@ table(pt_non_na$litter_size_discrete,
               "age_at_eye_opening_discrete")) 
 ```
 
-## Coding based on the discretized variables. 
+## Coding based on the discretized variables: algorithmic coding
 
 Some marsupials that are obviously altricial can get incorrectly coded as intermediate by this scheme because they have a litter size close to 1. Therefore, we will code all prototherian and metatherian species and altricial and follow this scheme only for eutherians. 
 
-**resume here**
-
 ```{r}
-knitr::knit_exit()
-```
-
-
-
-```{r}
-pt_non_na %>% 
+pt_coded_algorithmic <- pt_non_na %>% 
   mutate(precocity = case_when(
-    infraclass == "Metatheria" ~ "altricial",
-    litter_size >= 3 & age_at_eye_opening_d >= 5 ~ "altricial",
-    litter_size < 1.5 & age_at_eye_opening_d == 0 ~ "precocial",
-    litter_size > 1.5 & litter_size < 3 & 
-      age_at_eye_opening_d > 0 & age_at_eye_opening_d < 5 ~ "intermediate",
+    infraclass != "Eutheria" ~ "altricial",
+    age_at_eye_opening_discrete == "high" ~ "altricial",
+    age_at_eye_opening_discrete == "low" & litter_size_discrete == "low" ~ "precocial",
+    age_at_eye_opening_discrete == "medium" & litter_size_discrete == "medium" ~ "intermediate",
     .default = NA_character_
   )) %>% 
+  mutate(coding_method = ifelse(!is.na(precocity), "algorithmic", "manual"))
+```
+
+## Coding based on the discretized varibles: manual coding
+
+There are 31 species that need to be coded manually. 
+
+```{r}
+fs::dir_create(here("data/traits/manual-coding"))
+pt_coded_algorithmic %>% 
   filter(is.na(precocity)) %>% 
-  print(n = Inf, width = Inf)
-```
-
-```{r}
-(
-  pt_non_na %>% 
-    ggplot(aes(adult_body_mass_g, gestation_len_d, 
-               color = age_at_eye_opening_discrete, 
-               label = binomial)) +
-    geom_point() +
-    scale_x_log10() +
-    scale_y_log10() +
-    geom_smooth(method = "lm")
-) %>% 
-  ggplotly()
-```
-  
-  
-  
-# Explore variables relevant for precocity
-
-## Neonatal body mass vs. adult body mass
-
-```{r}
-ggplot(pt, aes(adult_body_mass_g, neonate_body_mass_g)) +
-  geom_point(aes(color = infraclass)) +
-  scale_x_log10() +
-  scale_y_log10()
-```
-
-```{r}
-pt_neonate_nonna <- filter(pt, 
-                           !is.na(adult_body_mass_g) &
-                             !is.na(neonate_body_mass_g) &
-                             !is.na(age_at_eye_opening_d))
-
-lm_neonate_bm <- lm(log10(neonate_body_mass_g) ~ log10(adult_body_mass_g), pt_neonate_nonna)
-
-summary(lm_neonate_bm)
-
-broom::tidy(lm_neonate_bm)
-lm_neonate_bm_tidy <- bind_cols(pt_neonate_nonna, broom::augment(lm_neonate_bm))
-
-ggplot(lm_neonate_bm_tidy) +
-  geom_histogram(aes(.resid, fill = age_at_eye_opening_d > 5), 
-                 bins = 30, position = "identity", alpha = 1) +
-  facet_grid(rows = vars(infraclass), scales = "free_y") +
-  theme_bw()
-
-ggplot(lm_neonate_bm_tidy) +
-  geom_density(aes(.resid, 
-                   fill = age_at_eye_opening_d > 5), 
-               alpha = 0.75, 
-               position = "identity") +
-  facet_grid(rows = vars(infraclass), scales = "free_y") +
-  theme_bw()
-```
-
-## ratio of neonatal/adult body mass
-```{r}
-pt %>% 
-  filter(!is.na(adult_body_mass_g), 
-         !is.na(gestation_len_d),
-         !is.na(litter_size),
-         !is.na(neonate_body_mass_g),
-         !is.na(age_at_eye_opening_d)) %>% 
-  mutate(bm_ratio = neonate_body_mass_g/adult_body_mass_g) %>% 
-  ggplot(aes(bm_ratio, fill = age_at_eye_opening_d > 5)) +
-  geom_density(position = "identity", outline.type = "full", adjust = 0.25) +
-  facet_grid(rows = vars(infraclass), scales = "free_y")
-
+  write_csv(here("data/03_coded/manual-coding/to-code.csv"))
 ```
 
 
 ```{r}
-knitr::knit_exit()
+#| message: false
+#| warning: false
+
+# read in the table with manual codings
+manually_coded <- read_csv(here("data/03_coded/manual-coding/coded.csv"))
+
+# if precocity has not been defined by algorithmic methods, use manually coded value
+pt_coded <- pt_coded_algorithmic %>% 
+  mutate(precocity = map2_chr(
+    binomial, 
+    precocity,
+    function(x, y) {
+      ifelse(is.na(y),
+             manually_coded$precocity[manually_coded$binomial == x],
+             y)
+    }
+  ))
+```
+
+## Biased coding
+
+We also want to code the precocity variable in altricial-biased and precocial-biased manner, so that we can repeat ancestral state reconstruction with different ways of coding the variable. This way we can ensure that the estimated ancestral state is not an artefact of the biases in coding. For altricial-biased, we will code the intermediates as altricial, and for precocial-biased we will code the intermediates as precocial. 
+
+```{r}
+pt_coded <- pt_coded %>% 
+  mutate(precocity_altricial_biased = ifelse(
+    precocity == "intermediate",
+    "altricial",
+    precocity
+  )) %>% 
+  mutate(precocity_precocial_biased = ifelse(
+    precocity == "intermediate",
+    "precocial",
+    precocity
+  )) 
+```
+
+
+# Explore precocity-coded data
+
+## Frequency of preocial and altricial species
+
+```{r}
+count(pt_coded, precocity)
 ```
 
 ```{r}
-ggplot(pt, aes(gestation_len_d, litter_size)) +
-  geom_point(aes(color = infraclass)) +
-  scale_x_log10()
+count(pt_coded, precocity_altricial_biased)
+count(pt_coded, precocity_precocial_biased)
+```
+
+## Compare with previous coding
+
+Compare my current coding of precocity with the coding I had done in the past when I was last working on this. That included some manual coding from one of Mihaela's students, KD, as well. 
+
+For the species that are common in both datasets — the current and the old one — there are zero species for which the precocity coding is discordant.
+
+```{r}
+pt_coded %>% 
+  left_join(select(kd, binomial, precocity_kd), by = "binomial") %>% 
+  filter(!is.na(precocity_kd)) %>% 
+  filter(precocity != precocity_kd)
+```
+
+## Manual vs algorithmic coding
+
+```{r}
+pt_coded %>% 
+  count(precocity, coding_method)
 ```
 
 ```{r}
-ggplot(pt, aes(gestation_len_d, age_at_eye_opening_d)) +
-  geom_point(aes(color = infraclass)) +
-  scale_x_log10()
-```
-
-```{r}
-ggplot(pt, aes(infraclass, age_at_eye_opening_d)) +
-  ggforce::geom_sina()
-
-ggplot(pt, aes(infraclass, neonate_body_mass_g)) +
-  ggforce::geom_sina() +
-  scale_y_log10()
-
-ggplot(pt, aes(gestation_len_d, age_at_eye_opening_d)) +
-  geom_point(aes(color = infraclass)) +
-  scale_x_log10()
-
-ggplot(pt, aes(adult_body_mass_g, neonate_body_mass_g)) +
-  geom_point(aes(fill = infraclass), 
-             size = 2, shape = 21, color = "white") +
+pt_coded %>% 
+  mutate(text_label = ifelse(coding_method == "manual",
+                             binomial,
+                             NA_character_)) %>% 
+  ggplot(aes(adult_body_mass_g, gestation_len_d, label = text_label)) +
+  geom_point(aes(shape = coding_method, 
+                 color = precocity), 
+             size = 2) +
+  geom_text_repel(size = 2.5) +
   scale_x_log10() +
   scale_y_log10() +
-  # scale_color_manual(values = c("#fdc086","#beaed4", "#7fc97f")) +
-  scale_fill_manual(values = c("#1b9e77", "#d95f02", "#7570b3")) +
   theme_bw()
-
-ggplot(pt, aes(age_at_eye_opening_d, litter_size)) +
-  geom_point(aes(color = infraclass))
 ```
 
+Everything looks good. 
+
+The only thing that stands out to me right now are the two data points in the otherwide altricial cloud of points that are both precocial and manually coded. These are _Lepus europaeus_ and _Lepus americanus_. These are both hare species, and I confirmed that they are both in fact precocial species. 
 
 
-
-First, we compare adult body mass vs gestation length using PanTHERIA vs Myhrvold datasets. 
+# Write data
 
 ```{r}
-p <- ggplot(pt, aes(adult_body_mass_g, gestation_len_d, 
-               color = order, shape = infraclass)) +
-  geom_point() +
-  scale_x_log10() +
-  scale_y_log10() +
-  theme_minimal()
-
-test_plot_size(p, 10, 8)
+write_csv(pt_coded, here("data/03_coded/pt_precocity-data_v1.csv"))
 ```
-
-```{r}
-ggplot(mv, aes(adult_body_mass_g, gestation_len_d,
-               color = infraclass)) +
-  geom_point() +
-  scale_x_log10() +
-  scale_y_log10() +
-  theme_minimal()
-```
-
 
 # Session Info
 ```{r session_info, eval=TRUE}
