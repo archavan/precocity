@@ -106,11 +106,44 @@ mv %>%
          !is.na(neonate_body_mass_g))
 ```
 
-## PanTHERIA has "age at eye opening"
+## We will use PanTHERIA because it has "age at eye opening"
 
 However, the PanTHERIA dataset has the variable of age of eye opening, which is crucial for coding precocity, but it's missing from the Myhrvold dataset. 
 
-Therefore, for now, I will stick to using the PanTHERIA dataset, which is also the more popular one of the two. We still have more than 300 species for which we have non-NA data for all necessary variables. We lose prototherian data points, however, which is okay. 
+Therefore, for now, I will stick to using the PanTHERIA dataset, which is also the more popular one of the two. We still have more than 300 species for which we have non-NA data for all necessary variables. 
+
+### Fill in missing data for monotremes
+
+At this point, we have two monotreme species in the data, but PanTHERIA doesn't have age at eye opening for either of the two species. We will lose both of these data points if we use species with non-NA values for age at eye opening. Therefore, we will add these values from the literature. 
+
+- Platypus (_Ornithorhynchus anatinus_)
+  - ~ 93 days at eye opening (Thomas et al, 2020, doi:10.1071/am19019) after egg laying - 12 days of incubation, therefore 81 days after hatching. 
+- Short-beaked echidna (_Tachyglossus aculeatus_)
+  - eyes closed and hairless until 45 days, therefore lower bound of 45 days (Rismiller and Seymour, 1991, http://www.jstor.org/stable/24936795)
+	- eyes are open at 70 days, therefore upper bound of 70 days (https://csiropedia.csiro.au/echidna-spiny-ant-eater-1969/)
+	
+For platypus, PanTHERIA also doesn't have neonate body mass. But Ferner et al (2017, https://doi.org/10.1111/joa.12689) have the neonate body mass information as 0.3-0.4 g. We will use the average 0.35 g. 
+
+
+```{r}
+pt <- pt %>% 
+  mutate(age_at_eye_opening_d = case_when(
+    binomial == "Ornithorhynchus_anatinus" ~ 81,
+    binomial == "Tachyglossus_aculeatus" ~ 70,
+    .default = age_at_eye_opening_d
+  )) %>% 
+  mutate(neonate_body_mass_g = case_when(
+    binomial == "Ornithorhynchus_anatinus" ~ 0.35,
+    .default = neonate_body_mass_g
+  )) %>% 
+  mutate(notes = case_when(
+    binomial == "Ornithorhynchus_anatinus" ~ "age_at_eye_opening_d from https://doi.org/10.1071/am19019, neonate_body_mass_g from https://doi.org/10.1111/joa.12689",
+    binomial == "Tachyglossus_aculeatus" ~ "age_at_eye_opening_d from https://csiropedia.csiro.au/echidna-spiny-ant-eater-1969/",
+    .default = NA_character_
+  )) 
+```
+
+### Filter PanTHERIA data
 
 ```{r}
 pt_non_na <-  pt %>% 
@@ -193,12 +226,9 @@ table(pt_non_na$litter_size_discrete,
 
 ## Coding based on the discretized variables: algorithmic coding
 
-Some marsupials that are obviously altricial can get incorrectly coded as intermediate by this scheme because they have a litter size close to 1. Therefore, we will code all prototherian and metatherian species and altricial and follow this scheme only for eutherians. 
-
 ```{r}
 pt_coded_algorithmic <- pt_non_na %>% 
   mutate(precocity = case_when(
-    infraclass != "Eutheria" ~ "altricial",
     age_at_eye_opening_discrete == "high" ~ "altricial",
     age_at_eye_opening_discrete == "low" & litter_size_discrete == "low" ~ "precocial",
     age_at_eye_opening_discrete == "medium" & litter_size_discrete == "medium" ~ "intermediate",
@@ -271,6 +301,14 @@ count(pt_coded, precocity_altricial_biased)
 count(pt_coded, precocity_precocial_biased)
 ```
 
+```{r}
+table(pt_coded$litter_size_discrete, 
+      pt_coded$age_at_eye_opening_discrete, 
+      dnn = c("litter_size_discrete", 
+              "age_at_eye_opening_discrete")) 
+```
+
+
 ## Compare with previous coding
 
 Compare my current coding of precocity with the coding I had done in the past when I was last working on this. That included some manual coding from one of Mihaela's students, KD, as well. 
@@ -314,6 +352,7 @@ The only thing that stands out to me right now are the two data points in the ot
 # Write data
 
 ```{r}
+pt_coded <- relocate(pt_coded, notes, .after = last_col())
 write_csv(pt_coded, here("data/03_coded/pt_precocity-data_v1.csv"))
 ```
 
