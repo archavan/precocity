@@ -17,7 +17,7 @@ Mammalia <- list(
     "Diprotodontia"
   ),
   Eutheria = list(
-    Xenartha = list(
+    Xenarthra = list(
       "Pilosa",
       "Cingulata"
     ),
