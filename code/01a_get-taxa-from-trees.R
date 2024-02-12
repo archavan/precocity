@@ -23,8 +23,7 @@ up19_tips <- up19_tips %>%
   mutate(binomial = str_replace(tiplab, ".*([A-Z][a-z]+_[a-z]+).*", "\\1"))
 
 # write lists of taxa to file =================================================
-fs::dir_create("results/taxa")
-write_csv(dr12_tips, "results/taxa/dosReis2012_all-taxa.csv")
-write_csv(up19_tips, "results/taxa/upham2019_all-taxa.csv")
+write_csv(dr12_tips, "data/trees/dosReis2012/dosReis2012_all-taxa.csv")
+write_csv(up19_tips, "data/trees/upham2019/upham2019_all-taxa.csv")
 
 # end =========================================================================

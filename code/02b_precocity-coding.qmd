@@ -21,11 +21,10 @@ Here we categorize species into precocial and altricial based on life history va
 
 # Setup
 ```{r, message=FALSE, warning=FALSE}
-knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>")
 
 library(tidyverse)
 library(here)
-library(plotly)
 library(ggrepel)
 ```
 
@@ -37,82 +36,14 @@ library(ggrepel)
 
 # pruned to species in the upham 2019 tree
 pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
-mv <- read_csv(here("data/02_pruned/myhrvold_upham2019.csv"))
-kd <- read_csv(here("data/02_pruned/mp-kd_upham2019.csv"))
 ```
 
-# Compare PanTHERIA and Myhrvold datasets
+# Fill in missing data for monotremes
 
 ```{r}
-ptmv <- full_join(pt, 
-                  mv, 
-                  by = c("infraclass", "order", "family", "binomial"), 
-                  suffix = c("_pt", "_mv"))
+filter(pt, rank03 == "Prototheria")
 ```
 
-## The two datasets are largely concordant
-
-Based on the adult body mass and gestation length comparison, the two datasets are largely concordant, with a small number of exceptions where the data for those species between the datasets is wildly different. Looking each of these species up individually, it seems like in some cases the PanTHERIA dataset has more reasonable values that agree with other sources while in other cases it's the Myhrvold dataset — there is no clearly worse dataset as a whole.
-
-```{r}
-#| fig-width: 5
-#| fig-height: 5
-
-body_mass_comparison <- ggplot(ptmv, 
-                               aes(adult_body_mass_g_pt, 
-                                   adult_body_mass_g_mv,
-                                   label = binomial)) +
-  geom_point(alpha = 0.75) +
-  scale_x_log10() +
-  scale_y_log10() +
-  coord_equal() +
-  theme_bw()
-
-ggplotly(body_mass_comparison)
-```
-
-```{r}
-#| fig-width: 5
-#| fig-height: 5
-
-gestation_comparison <- ggplot(ptmv, 
-                               aes(gestation_len_d_pt, 
-                                   gestation_len_d_mv,
-                                   label = binomial)) +
-  geom_point(alpha = 0.75) +
-  scale_x_log10() +
-  scale_y_log10() +
-  coord_equal() +
-  theme_bw()
-
-ggplotly(gestation_comparison)
-```
-
-## Number of species with necessary information
-
-For four of the variables of interest that are shared between the two datasets, Myhrvold dataset clearly has many more species with non-NA data. 
-
-```{r}
-pt %>% 
-  filter(!is.na(adult_body_mass_g), 
-         !is.na(gestation_len_d),
-         !is.na(litter_size),
-         !is.na(neonate_body_mass_g))
-
-mv %>% 
-  filter(!is.na(adult_body_mass_g), 
-         !is.na(gestation_len_d),
-         !is.na(litter_size),
-         !is.na(neonate_body_mass_g))
-```
-
-## We will use PanTHERIA because it has "age at eye opening"
-
-However, the PanTHERIA dataset has the variable of age of eye opening, which is crucial for coding precocity, but it's missing from the Myhrvold dataset. 
-
-Therefore, for now, I will stick to using the PanTHERIA dataset, which is also the more popular one of the two. We still have more than 300 species for which we have non-NA data for all necessary variables. 
-
-### Fill in missing data for monotremes
 
 At this point, we have two monotreme species in the data, but PanTHERIA doesn't have age at eye opening for either of the two species. We will lose both of these data points if we use species with non-NA values for age at eye opening. Therefore, we will add these values from the literature. 
 
@@ -135,12 +66,7 @@ pt <- pt %>%
   mutate(neonate_body_mass_g = case_when(
     binomial == "Ornithorhynchus_anatinus" ~ 0.35,
     .default = neonate_body_mass_g
-  )) %>% 
-  mutate(notes = case_when(
-    binomial == "Ornithorhynchus_anatinus" ~ "age_at_eye_opening_d from https://doi.org/10.1071/am19019, neonate_body_mass_g from https://doi.org/10.1111/joa.12689",
-    binomial == "Tachyglossus_aculeatus" ~ "age_at_eye_opening_d from https://csiropedia.csiro.au/echidna-spiny-ant-eater-1969/",
-    .default = NA_character_
-  )) 
+  ))
 ```
 
 ### Filter PanTHERIA data
@@ -155,7 +81,7 @@ pt_non_na <-  pt %>%
 
 pt_non_na
 
-count(pt_non_na, infraclass)
+count(pt_non_na, rank03)
 ```
 
 # Precocial/altricial coding
@@ -210,7 +136,7 @@ ggplot(pt_non_na, aes(litter_size, fill = age_at_eye_opening_discrete)) +
                  alpha = 0.7, 
                  color = "white", 
                  bins = 25) +
-  facet_grid(rows = vars(infraclass),
+  facet_grid(rows = vars(rank03),
              scales = "free_y") +
   theme_bw()
 ```
@@ -263,30 +189,11 @@ pt_coded <- pt_coded_algorithmic %>%
     precocity,
     function(x, y) {
       ifelse(is.na(y),
-             manually_coded$precocity[manually_coded$binomial == x],
+             manually_coded$precocity[which(manually_coded$binomial == x)],
              y)
     }
   ))
 ```
-
-## Biased coding
-
-We also want to code the precocity variable in altricial-biased and precocial-biased manner, so that we can repeat ancestral state reconstruction with different ways of coding the variable. This way we can ensure that the estimated ancestral state is not an artefact of the biases in coding. For altricial-biased, we will code the intermediates as altricial, and for precocial-biased we will code the intermediates as precocial. 
-
-```{r}
-pt_coded <- pt_coded %>% 
-  mutate(precocity_altricial_biased = ifelse(
-    precocity == "intermediate",
-    "altricial",
-    precocity
-  )) %>% 
-  mutate(precocity_precocial_biased = ifelse(
-    precocity == "intermediate",
-    "precocial",
-    precocity
-  )) 
-```
-
 
 # Explore precocity-coded data
 
@@ -297,29 +204,10 @@ count(pt_coded, precocity)
 ```
 
 ```{r}
-count(pt_coded, precocity_altricial_biased)
-count(pt_coded, precocity_precocial_biased)
-```
-
-```{r}
 table(pt_coded$litter_size_discrete, 
       pt_coded$age_at_eye_opening_discrete, 
       dnn = c("litter_size_discrete", 
               "age_at_eye_opening_discrete")) 
-```
-
-
-## Compare with previous coding
-
-Compare my current coding of precocity with the coding I had done in the past when I was last working on this. That included some manual coding from one of Mihaela's students, KD, as well. 
-
-For the species that are common in both datasets — the current and the old one — there are zero species for which the precocity coding is discordant.
-
-```{r}
-pt_coded %>% 
-  left_join(select(kd, binomial, precocity_kd), by = "binomial") %>% 
-  filter(!is.na(precocity_kd)) %>% 
-  filter(precocity != precocity_kd)
 ```
 
 ## Manual vs algorithmic coding
@@ -352,8 +240,7 @@ The only thing that stands out to me right now are the two data points in the ot
 # Write data
 
 ```{r}
-pt_coded <- relocate(pt_coded, notes, .after = last_col())
-write_csv(pt_coded, here("data/03_coded/pt_precocity-data_v1.csv"))
+write_csv(pt_coded, here("data/03_coded/precocity-data_v1.csv"))
 ```
 
 # Session Info

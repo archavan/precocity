@@ -1,0 +1,122 @@
+---
+title: Pick trait dataset
+author: Arun Chavan
+format: 
+  html:
+    theme: cosmo
+    self-contained: true
+toc: true
+editor: source
+fontsize: 0.95em
+editor_options: 
+  chunk_output_type: inline
+---
+
+Started: 2023-11-22  
+Last edited: `r format(Sys.time())`
+
+# Background
+
+Here we compare the trait datasets and decide which we will use for analysis.
+
+# Setup
+```{r, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
+
+library(tidyverse)
+library(here)
+library(plotly)
+library(ggrepel)
+```
+
+# Data
+
+```{r}
+#| message: false
+#| warning: false
+
+# pruned to species in the upham 2019 tree
+pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
+mv <- read_csv(here("data/02_pruned/myhrvold_upham2019.csv"))
+kd <- read_csv(here("data/02_pruned/mp-kd_upham2019.csv"))
+```
+
+# Compare PanTHERIA and Myhrvold datasets
+
+```{r}
+ptmv <- full_join(pt, 
+                  mv, 
+                  by = c("rank01", "rank02", "rank03", "rank04",
+                         "rank05", "rank06", "rank07", "rank08", 
+                         "family", "binomial"), 
+                  suffix = c("_pt", "_mv"))
+```
+
+## The two datasets are largely concordant
+
+Based on the adult body mass and gestation length comparison, the two datasets are largely concordant, with a small number of exceptions where the data for those species between the datasets is wildly different. Looking each of these species up individually, it seems like in some cases the PanTHERIA dataset has more reasonable values that agree with other sources while in other cases it's the Myhrvold dataset — there is no clearly worse dataset as a whole.
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+
+body_mass_comparison <- ggplot(ptmv, 
+                               aes(adult_body_mass_g_pt, 
+                                   adult_body_mass_g_mv,
+                                   label = binomial)) +
+  geom_point(alpha = 0.75) +
+  scale_x_log10() +
+  scale_y_log10() +
+  coord_equal() +
+  theme_bw()
+
+ggplotly(body_mass_comparison)
+```
+
+```{r}
+#| fig-width: 5
+#| fig-height: 5
+
+gestation_comparison <- ggplot(ptmv, 
+                               aes(gestation_len_d_pt, 
+                                   gestation_len_d_mv,
+                                   label = binomial)) +
+  geom_point(alpha = 0.75) +
+  scale_x_log10() +
+  scale_y_log10() +
+  coord_equal() +
+  theme_bw()
+
+ggplotly(gestation_comparison)
+```
+
+## Number of species with necessary information
+
+For four of the variables of interest that are shared between the two datasets, Myhrvold dataset clearly has many more species with non-NA data. 
+
+```{r}
+pt %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g))
+
+mv %>% 
+  filter(!is.na(adult_body_mass_g), 
+         !is.na(gestation_len_d),
+         !is.na(litter_size),
+         !is.na(neonate_body_mass_g))
+```
+
+## We will use PanTHERIA because it has "age at eye opening"
+
+However, the PanTHERIA dataset has the variable of age of eye opening, which is crucial for coding precocity, but it's missing from the Myhrvold dataset. 
+
+Therefore, for now, I will stick to using the PanTHERIA dataset, which is also the more popular one of the two. We still have more than 300 species for which we have non-NA data for all necessary variables. 
+
+
+# Session Info
+```{r session_info, eval=TRUE}
+sessionInfo()
+```
+

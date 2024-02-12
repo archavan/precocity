@@ -33,6 +33,9 @@ msw <- read_csv(here("data/taxa/msw3-all.csv"),
 clades <- mutate(clades, across(everything(), str_to_sentence))
 msw <- mutate(msw, across(everything(), str_to_sentence))
 
+# Indriidae family is misspelt in MSW as Indridae. 
+msw$family[which(msw$family == "Indridae")] <- "Indriidae"
+
 # add families to higer order clades from MSW data ============================
 get_taxonomic_rank <- function(.taxon) {
   txrank <- names(which(apply(msw, 2, function(x) any(grepl(.taxon, x)))))
