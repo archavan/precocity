@@ -10,7 +10,7 @@ library(tidyverse)
 library(here)
 library(phytools)
 
-resdir <- here("results/simmap/out")
+resdir <- here("results/scm/pantheria/out")
 fs::dir_create(resdir)
 
 # data ========================================================================
