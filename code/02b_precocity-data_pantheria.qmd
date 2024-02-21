@@ -36,6 +36,8 @@ library(ggrepel)
 
 # pruned to species in the upham 2019 tree
 pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
+
+spp <- read_csv(here("data/taxa/species.csv"))
 ```
 
 # Fill in missing data for monotremes
@@ -168,10 +170,10 @@ pt_coded_algorithmic <- pt_non_na %>%
 There are 31 species that need to be coded manually. 
 
 ```{r}
-fs::dir_create(here("data/traits/manual-coding"))
+fs::dir_create(here("data/03_coded/pantheria/manual"))
 pt_coded_algorithmic %>% 
   filter(is.na(precocity)) %>% 
-  write_csv(here("data/03_coded/manual-coding/to-code.csv"))
+  write_csv(here("data/03_coded/pantheria/manual/to-code.csv"))
 ```
 
 
@@ -180,7 +182,7 @@ pt_coded_algorithmic %>%
 #| warning: false
 
 # read in the table with manual codings
-manually_coded <- read_csv(here("data/03_coded/manual-coding/coded.csv"))
+manually_coded <- read_csv(here("data/03_coded/pantheria/manual/coded.csv"))
 
 # if precocity has not been defined by algorithmic methods, use manually coded value
 pt_coded <- pt_coded_algorithmic %>% 
@@ -236,11 +238,47 @@ Everything looks good.
 
 The only thing that stands out to me right now are the two data points in the otherwide altricial cloud of points that are both precocial and manually coded. These are _Lepus europaeus_ and _Lepus americanus_. These are both hare species, and I confirmed that they are both in fact precocial species. 
 
+## Taxonomic coverage
+
+```{r}
+tax_coverage <- tibble(order = unique(spp$rank07))
+
+calc_fraction <- function(.data, .order) {
+  length(which(.data$rank07 == .order))/length(.data$rank07)
+}
+
+tax_coverage <- tax_coverage %>% 
+  mutate(cvg_base = map_dbl(order, ~ calc_fraction(spp, .x)),
+         cvg_pt_coded = map_dbl(order, ~ calc_fraction(pt_coded, .x))) %>% 
+  mutate(enrichment = cvg_pt_coded/cvg_base) %>% 
+  arrange(enrichment)
+
+print(tax_coverage, n = Inf)
+```
+
+There are 17 orders that are underrepresented, but 10 orders will be severely underrepresented in the precocity data (less than 0.1 enrichment).
+
+```{r}
+# data for all species in orders that will be underrepresented. 
+underrep <- spp %>% 
+  filter(rank07 %in% tax_coverage$order[which(tax_coverage$enrichment < 0.1)]) %>% 
+  filter(!(binomial %in% pt_coded$binomial))
+
+underrep
+```
+
+```{r}
+count(underrep, rank07) %>% 
+  arrange(-n)
+```
 
 # Write data
 
 ```{r}
-write_csv(pt_coded, here("data/03_coded/precocity-data_v1.csv"))
+write_csv(pt_coded, here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+
+write_csv(tax_coverage, here("data/03_coded/pantheria/taxonomic-coverage.csv"))
+write_csv(underrep, here("data/03_coded/pantheria/spp-from-underrepresented-orders.csv"))
 ```
 
 # Session Info
