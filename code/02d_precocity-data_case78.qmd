@@ -1,0 +1,146 @@
+---
+title: Precocity data from Case (1978)
+author: Arun Chavan
+format: 
+  html:
+    theme: cosmo
+    self-contained: true
+toc: true
+editor: source
+fontsize: 0.95em
+editor_options: 
+  chunk_output_type: inline
+---
+
+Started: 2024-02-21  
+Last edited: `r format(Sys.time())`
+
+# Background
+
+I already digitized the Appendix 2 table from [Case 1978](https://doi.org/10.1086/410622), which has precocity data for ~150 species. Here we harmonize data from Case (1978) with the Upham phylogeny and other taxonomic information.
+
+# Setup
+```{r, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>", error = TRUE)
+
+library(tidyverse)
+library(here)
+```
+
+# Data
+
+```{r}
+#| message: false
+#| warning: false
+
+case78 <- read_csv(here("data/traits/case-1978/appendix-2.csv"))
+
+upham_spp <- read_csv(here("data/trees/upham2019/upham2019_all-taxa.csv"))
+
+families <- read_csv(here("data/taxa/families.csv"))
+spp <- read_csv(here("data/taxa/species.csv"))
+```
+
+# Process data
+
+Filter to keep only those species that are found in the Upham phylogeny. 
+
+```{r}
+case78 <- case78 %>% 
+  mutate(binomial = ifelse(!is.na(synonym_upham19),
+                           synonym_upham19,
+                           binomial_case78))
+
+# we lose 2 species here: Proechimys_semispinosus and Canis_familiaris
+case78 <- case78 %>% 
+  filter(binomial %in% upham_spp$binomial)
+```
+
+Add family and other taxonomic information.
+
+```{r}
+# add taxonomic information
+get_family <- function(.synonyms, .data = spp) {
+  i <- 1
+  fam <- vector("character", 0L)
+  repeat {
+    if (i > length(.synonyms) | length(fam) != 0) break
+    fam <- .data$family[which(.data$binomial == .synonyms[i])]
+    i <- i + 1
+  }
+  stopifnot("family not found" = length(fam) == 1) 
+  return(fam)
+}
+
+case78 <- case78 %>% 
+  mutate(synonyms = map2(binomial_case78, synonym_upham19, c)) %>% 
+  mutate(synonyms = map(synonyms, ~ .x[complete.cases(.x)])) 
+
+case78 <- case78 %>% 
+  mutate(family = map_chr(synonyms, 
+                          possibly(~ get_family(.x, spp), NA_character_)))
+
+stopifnot(!any(is.na(case78$family)))
+
+case78 <- left_join(case78, families, by = "family") %>% 
+  select(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
+         family, binomial, 
+         precocity)
+
+```
+
+# Explore precocity data
+
+```{r}
+count(case78, precocity)
+```
+
+## Taxonomic converage
+
+```{r}
+tax_coverage <- tibble(order = unique(spp$rank07))
+
+calc_fraction <- function(.data, .order) {
+  length(which(.data$rank07 == .order))/length(.data$rank07)
+}
+
+tax_coverage <- tax_coverage %>% 
+  mutate(cvg_base = map_dbl(order, ~ calc_fraction(spp, .x)),
+         cvg_case78 = map_dbl(order, ~ calc_fraction(case78, .x))) %>% 
+  mutate(enrichment = cvg_case78/cvg_base) %>% 
+  arrange(enrichment)
+
+print(tax_coverage, n = Inf)
+```
+
+```{r}
+# all species in orders that will be underrepresented. 
+underrep <- spp %>% 
+  filter(rank07 %in% tax_coverage$order[which(tax_coverage$enrichment < 0.1)]) %>% 
+  filter(!(binomial %in% case78$binomial))
+
+underrep
+```
+
+```{r}
+count(underrep, rank07) %>% 
+  arrange(-n) %>% 
+  print(n = Inf)
+```
+
+# Write data
+
+```{r}
+fs::dir_create(here("data/03_coded/case78"))
+
+write_csv(case78, here("data/03_coded/case78/precocity_case78_v1.csv"))
+
+write_csv(tax_coverage, here("data/03_coded/case78/taxonomic-coverage.csv"))
+write_csv(underrep, here("data/03_coded/case78/spp-from-underrepresented-orders.csv"))
+```
+
+
+# Session Info
+```{r session_info, eval=TRUE}
+sessionInfo()
+```
