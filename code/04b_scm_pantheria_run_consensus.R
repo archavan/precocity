@@ -44,7 +44,7 @@ write.nexus(tr_pruned, file = here(resdir, "tree_pruned.tree"))
 rownames_to_column(fit_aov, "model") %>% 
   write_tsv(here(resdir, "model-weights.tsv"))
 write_tsv(simmap_ace, here(resdir, "ace.tsv"))
-write_rds(simmap_consensus_summary, here(resdir, "simmap_summary.rds"))
+write_rds(simmap_consensus_summary, here(resdir, "simmap_summary.rds"), compress = "gz")
 
 # end =========================================================================
 
