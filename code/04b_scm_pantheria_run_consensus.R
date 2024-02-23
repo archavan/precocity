@@ -35,15 +35,12 @@ tr_pruned <- prune_tree_for_fitmk(tr, prec_tipdata)
 fit_aov <- fit_models(tr_pruned, prec_tipdata)
 simmap_consensus <- run_simmap(fit_aov, 1000)
 simmap_consensus_summary <- summary(simmap_consensus)
-simmap_ace <- simmap_consensus_summary$ace %>% 
-  as.data.frame() %>% 
-  rownames_to_column("node")
+simmap_ace <- simmap_consensus_summary$ace
 
 # write output ================================================================
-write.nexus(tr_pruned, file = here(resdir, "tree_pruned.tree"))
-rownames_to_column(fit_aov, "model") %>% 
-  write_tsv(here(resdir, "model-weights.tsv"))
-write_tsv(simmap_ace, here(resdir, "ace.tsv"))
+write_rds(tr_pruned, file = here(resdir, "tree_pruned.rds"))
+write_rds(fit_aov, here(resdir, "model-weights.rds"))
+write_rds(simmap_ace, here(resdir, "ace.rds"))
 write_rds(simmap_consensus_summary, here(resdir, "simmap_summary.rds"), compress = "gz")
 
 # end =========================================================================
