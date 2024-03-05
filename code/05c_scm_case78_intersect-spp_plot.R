@@ -16,22 +16,23 @@ clrs <- c(altricial = '#fc8d59',
           intermediate = '#ffffbf',
           precocial = '#91bfdb')
 
-analysis_name <- "pantheria"
+analysis_name <- "case78-intersect-spp"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
 # tipdata
-prec_data <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+prec_data <- read_csv(here("data/03_coded/pt_case78_intersect-spp.csv"))
 prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, c("altricial", "intermediate", "precocial")))
-prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
+  mutate(precocity_case78 = fct(precocity_case78, 
+                                c("altricial", "intermediate", "precocial")))
+prec_tipdata <- set_names(prec_data$precocity_case78, prec_data$binomial)
 
 # consensus results
 tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
 simmap_summary_consensus <- read_rds(here(resdir, "consensus/simmap_summary.rds"))
 
 # results from sampled trees
-asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
+asr <- tibble(tr_id = 1:98, tr_name = dir(here(resdir, "sample")))
 asr$tr_pruned <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "tree_pruned.rds")))
 asr$model_weights <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "model-weights.rds")))
 asr$ace <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "ace.rds")))
@@ -179,7 +180,7 @@ add_cladelab <- function(.taxon,
 }
 
 cairo_pdf(here(resdir, "plots", "consensus_asr.pdf"), 
-          width = 12, height = 7, 
+          width = 8, height = 5, 
           family = "Source Sans Pro", pointsize = 14)
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
 plot(simmap_summary_consensus, 

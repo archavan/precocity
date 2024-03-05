@@ -16,30 +16,41 @@ clrs <- c(altricial = '#fc8d59',
           intermediate = '#ffffbf',
           precocial = '#91bfdb')
 
-analysis_name <- "pantheria"
+model_to_test <- "ER"
+analysis_name <- paste0("pantheria-plus-underrep-", model_to_test)
 resdir <- here("results/scm", analysis_name)
+dir_create(here(resdir, "plots"))
 
 # data ========================================================================
 # tipdata
-prec_data <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+prec_data <- read_csv(here("data/03_coded/pantheria-plus-underrep-taxa.csv"))
 prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, c("altricial", "intermediate", "precocial")))
+  mutate(precocity = fct(precocity, 
+                         c("altricial", "intermediate", "precocial")))
 prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
 
 # consensus results
 tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
 simmap_summary_consensus <- read_rds(here(resdir, "consensus/simmap_summary.rds"))
+model_fit_consensus <- read_rds(here(resdir, "consensus/model-fit.rds"))
 
 # results from sampled trees
 asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
 asr$tr_pruned <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "tree_pruned.rds")))
-asr$model_weights <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "model-weights.rds")))
+asr$model_fit <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "model-fit.rds")))
 asr$ace <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "ace.rds")))
 
 # taxonomic information =======================================================
 taxa <- prec_data %>% 
   select(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
          family, binomial)
+
+###############################################################################
+# Q matrix ####################################################################
+###############################################################################
+pdf(here(resdir, "plots/q-matrix_consensus.pdf"), width = 5, height = 5)
+plot.fitMk(model_fit_consensus)
+dev.off()
 
 ###############################################################################
 # posterior probability distributions #########################################
@@ -179,7 +190,7 @@ add_cladelab <- function(.taxon,
 }
 
 cairo_pdf(here(resdir, "plots", "consensus_asr.pdf"), 
-          width = 12, height = 7, 
+          width = 15, height = 9, 
           family = "Source Sans Pro", pointsize = 14)
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
 plot(simmap_summary_consensus, 
@@ -205,6 +216,8 @@ add_cladelab("Euarchontoglires", 1.1, 1.12)
 add_cladelab("Afrotheria", 1.02, 1.04)
 add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
+add_cladelab("Primates", 1.06, 1.08)
+add_cladelab("Cetartiodactyla", 1.06, 1.08)
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
 add_cladelab("Chiroptera", 1.06, 1.08)

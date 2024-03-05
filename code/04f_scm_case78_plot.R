@@ -16,15 +16,25 @@ clrs <- c(altricial = '#fc8d59',
           intermediate = '#ffffbf',
           precocial = '#91bfdb')
 
-analysis_name <- "pantheria"
+analysis_name <- "case78"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
-# tipdata
-prec_data <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+# tip data
+prec_data <- read_csv(here("data/03_coded/case78/precocity_case78_v1.csv"))
+
 prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, c("altricial", "intermediate", "precocial")))
-prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
+  mutate(precocity_recoded = case_when(
+    precocity == "fetal" ~ "altricial",
+    precocity == "A" ~ "altricial",
+    precocity == "SA" ~ "intermediate",
+    precocity == "SP" ~ "intermediate",
+    precocity == "P" ~ "precocial"
+  )) %>% 
+  mutate(precocity_recoded = fct(precocity_recoded, 
+                                 c("altricial", "intermediate", "precocial")))
+
+prec_tipdata <- set_names(prec_data$precocity_recoded, prec_data$binomial)
 
 # consensus results
 tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
@@ -198,12 +208,12 @@ legend(x = min(pp$x.lim), y = max(pp$y.lim), xjust = 0, yjust = 1,
        bty = "n", cex = 0.6)
 
 add_cladelab("Metatheria", 1.02, 1.04, orientation = "horizontal")
-add_cladelab("Prototheria", 1.02, 1.04, orientation = "horizontal")
+# add_cladelab("Prototheria", 1.02, 1.04, orientation = "horizontal")
 # infraclass
 add_cladelab("Laurasiatheria", 1.1, 1.12)
 add_cladelab("Euarchontoglires", 1.1, 1.12)
 add_cladelab("Afrotheria", 1.02, 1.04)
-add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
+# add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
@@ -220,16 +230,16 @@ arc.cladelabels(tr_consensus,
                 stretch = 1,
                 cex = 0.5,
                 mark.node = FALSE)
-arc.cladelabels(tr_consensus, 
-                text = "Eulipotyphla", 
-                node = getMRCA(tr_consensus, 
-                               c(get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
-                                 get_species_in_taxon("Erinaceidae"))),
-                ln.offset = 1.06, 
-                lab.offset = 1.08, 
-                stretch = 1,
-                cex = 0.5,
-                mark.node = FALSE)
+# arc.cladelabels(tr_consensus, 
+#                 text = "Eulipotyphla", 
+#                 node = getMRCA(tr_consensus, 
+#                                c(get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
+#                                  get_species_in_taxon("Erinaceidae"))),
+                # ln.offset = 1.06, 
+                # lab.offset = 1.08, 
+                # stretch = 1,
+                # cex = 0.5,
+                # mark.node = FALSE)
 arc.cladelabels(tr_consensus, 
                 text = "Herpestoidea", 
                 node = getMRCA(tr_consensus, 
@@ -242,7 +252,7 @@ arc.cladelabels(tr_consensus,
                 mark.node = FALSE)
 
 # families
-add_cladelab("Felidae", 1.02, 1.04)
+#add_cladelab("Felidae", 1.02, 1.04)
 add_cladelab("Canidae", 1.02, 1.04)
 add_cladelab("Ursidae", 1.02, 1.04)
 add_cladelab("Mustelidae", 1.02, 1.04)

@@ -16,14 +16,15 @@ clrs <- c(altricial = '#fc8d59',
           intermediate = '#ffffbf',
           precocial = '#91bfdb')
 
-analysis_name <- "pantheria"
+analysis_name <- "case78-plus-underrep"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
 # tipdata
-prec_data <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+prec_data <- read_csv(here("data/03_coded/case78-plus-underrep-taxa.csv"))
 prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, c("altricial", "intermediate", "precocial")))
+  mutate(precocity = fct(precocity, 
+                         c("altricial", "intermediate", "precocial")))
 prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
 
 # consensus results
@@ -31,7 +32,7 @@ tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
 simmap_summary_consensus <- read_rds(here(resdir, "consensus/simmap_summary.rds"))
 
 # results from sampled trees
-asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
+asr <- tibble(tr_id = 1:99, tr_name = dir(here(resdir, "sample")))
 asr$tr_pruned <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "tree_pruned.rds")))
 asr$model_weights <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "model-weights.rds")))
 asr$ace <- lapply(asr$tr_name, \(x) read_rds(here(resdir, "sample", x, "ace.rds")))
@@ -179,7 +180,7 @@ add_cladelab <- function(.taxon,
 }
 
 cairo_pdf(here(resdir, "plots", "consensus_asr.pdf"), 
-          width = 12, height = 7, 
+          width = 8, height = 5, 
           family = "Source Sans Pro", pointsize = 14)
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
 plot(simmap_summary_consensus, 
@@ -267,5 +268,42 @@ arc.cladelabels(tr_consensus,
                 cex = 0.5,
                 mark.node = FALSE)
 dev.off()
+
+###############################################################################
+# figure out why the result is so sensitive to the phylogeny ##################
+###############################################################################
+
+# Does the PP of precocial at eutherian node depend on the model weights?
+
+asr %>% 
+  mutate(model_wt_ard = map_dbl(model_weights, ~ .x["fit_ard", "weight"])) %>% 
+  mutate(eutheria_pp_precocial = map2_dbl(
+    ace, 
+    tr_pruned,
+    function(x, y) {
+      pps <- get_pp_at_node(x, get_node(y, "Eutheria"))
+      pps[["precocial"]]
+    }
+  )) %>% 
+  ggplot(aes(model_wt_ard, eutheria_pp_precocial)) +
+  geom_point()
+
+asr %>% 
+  mutate(model_wt_ard = map_dbl(model_weights, ~ .x["fit_ard", "weight"])) %>% 
+  mutate(eutheria_pp_precocial = map2_dbl(
+    ace, 
+    tr_pruned,
+    function(x, y) {
+      pps <- get_pp_at_node(x, get_node(y, "Eutheria"))
+      pps[["precocial"]]
+    }
+  )) %>% 
+  arrange(-eutheria_pp_precocial)
+
+comparePhylo(asr$tr_pruned[[which(asr$tr_name == "tr045")]],
+             asr$tr_pruned[[which(asr$tr_name == "tr094")]], 
+             plot = TRUE, 
+             type = "phylogram", cex = 0.3)
+
 
 # end =========================================================================

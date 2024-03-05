@@ -16,14 +16,15 @@ clrs <- c(altricial = '#fc8d59',
           intermediate = '#ffffbf',
           precocial = '#91bfdb')
 
-analysis_name <- "pantheria"
+analysis_name <- "pantheria-plus-underrep"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
 # tipdata
-prec_data <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
+prec_data <- read_csv(here("data/03_coded/pantheria-plus-underrep-taxa.csv"))
 prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, c("altricial", "intermediate", "precocial")))
+  mutate(precocity = fct(precocity, 
+                         c("altricial", "intermediate", "precocial")))
 prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
 
 # consensus results
@@ -179,7 +180,7 @@ add_cladelab <- function(.taxon,
 }
 
 cairo_pdf(here(resdir, "plots", "consensus_asr.pdf"), 
-          width = 12, height = 7, 
+          width = 15, height = 9, 
           family = "Source Sans Pro", pointsize = 14)
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
 plot(simmap_summary_consensus, 
@@ -205,6 +206,8 @@ add_cladelab("Euarchontoglires", 1.1, 1.12)
 add_cladelab("Afrotheria", 1.02, 1.04)
 add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
+add_cladelab("Primates", 1.06, 1.08)
+add_cladelab("Cetartiodactyla", 1.06, 1.08)
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
 add_cladelab("Chiroptera", 1.06, 1.08)
@@ -267,5 +270,6 @@ arc.cladelabels(tr_consensus,
                 cex = 0.5,
                 mark.node = FALSE)
 dev.off()
+
 
 # end =========================================================================

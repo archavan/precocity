@@ -55,6 +55,28 @@ fit_models <- function(.phy, .dat) {
 
 # =============================================================================
 
+#' Fit single model
+#'
+#' @param .phy tree
+#' @param .dat tip data as a named vector where names are tip labels in tree
+#'
+#' @return results of `fitMK()`
+#' @export
+#'
+#' @examples
+#' 
+fit_single_model <- function(.phy, .dat, .model) {
+  .dat_sorted <- .dat[.phy$tip.label]
+  stopifnot(identical(names(.dat_sorted), .phy$tip.label))
+  
+  message("    fitting model...")
+  fit <- fitMk(.phy, .dat_sorted, model = .model,  pi = "estimated")
+  
+  return(fit)
+}
+
+# =============================================================================
+
 #' Run simmap
 #'
 #' @param .models_aov outout of `fit_models()`
