@@ -275,7 +275,7 @@ dev.off()
 
 # Does the PP of precocial at eutherian node depend on the model weights?
 
-asr %>% 
+ard_effect <- asr %>% 
   mutate(model_wt_ard = map_dbl(model_weights, ~ .x["fit_ard", "weight"])) %>% 
   mutate(eutheria_pp_precocial = map2_dbl(
     ace, 
@@ -286,7 +286,13 @@ asr %>%
     }
   )) %>% 
   ggplot(aes(model_wt_ard, eutheria_pp_precocial)) +
-  geom_point()
+  geom_point() +
+  labs(x = "weight for model ARD",
+       y = "PP for precocial eutherian ancestor") +
+  theme_bw()
+
+ggsave(here(resdir, "plots/effect-of-ARD-model-weight.pdf"),
+       ard_effect, width = 5, height = 5)
 
 asr %>% 
   mutate(model_wt_ard = map_dbl(model_weights, ~ .x["fit_ard", "weight"])) %>% 
