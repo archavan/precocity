@@ -21,7 +21,7 @@ clrs <- c(altricial = '#fc8d59',
 
 # data ========================================================================
 # precocity data
-prec_data <- read_csv(here("data/03_coded/pantheria-plus-underrep-taxa.csv"))
+prec_data <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
 pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
 prec_data <- left_join(prec_data, pt)
 prec_data <- filter(prec_data, rank03 == "Eutheria") # regression only for eutheria

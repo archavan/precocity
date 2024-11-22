@@ -18,7 +18,7 @@ clrs <- c(altricial = '#fc8d59',
           precocial = '#91bfdb')
 
 # data ========================================================================
-prec <- read_csv("data/03_coded/pantheria-plus-underrep-taxa.csv")
+prec <- read_csv("data/03_coded/case78-plus-pantheria.csv")
 pt <- read_csv("data/02_pruned/pantheria_upham2019.csv")
 
 prec <- left_join(prec, pt)
