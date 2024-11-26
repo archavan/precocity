@@ -107,35 +107,34 @@ get_pp_df <- function(.taxon) {
 # posterior probability distributions #########################################
 ###############################################################################
 
-plot_pp <- function(
-    .taxon, 
-    .title = .taxon
-) {
-  df <- get_pp_df(.taxon) %>% 
-    pivot_longer(-tree_id, names_to = "precocity", values_to = "pp")
-  
-  ggplot(df, aes(tree_id, pp, fill = precocity)) +
-    geom_col(width = 0.9, linewidth = 0) +
-    scale_fill_manual(values = clrs, guide = "none") +
-    labs(y = "Posterior probability",
-         x = "Sampled tree", 
-         title = .title) +
-    theme_half_open(font_family = "Source Sans Pro",
-                    line_size = 0.25,
-                    font_size = 6,
-                    rel_small = 5.5/6,
-                    rel_tiny = 5/6,
-                    rel_large = 7/6) +
-    theme(plot.title = element_text(face = 1))
-}
-
-ppdist_eutheria <- plot_pp("Eutheria")
-ppdist_mammalia <- plot_pp("Mammalia")
-ppdist_prototheria <- plot_pp("Prototheria")
-ppdist_metatheria <- plot_pp("Metatheria")
-ppdist_theria <- plot_pp("Theria")
+pp_df_main_nodes <- list(
+  Mammalia = get_pp_df("Mammalia"),
+  Eutheria = get_pp_df("Eutheria"),
+  Theria = get_pp_df("Theria"),
+  Prototheria = get_pp_df("Prototheria"),
+  Metatheria = get_pp_df("Metatheria")
+) %>% 
+  bind_rows(.id = "clade") %>%
+  mutate(clade = fct(clade, c("Mammalia", "Eutheria", "Theria", "Prototheria", "Metatheria"))) %>% 
+  pivot_longer(cols = c(altricial, intermediate, precocial), 
+               names_to = "precocity", 
+               values_to = "pp")
 
 
+ppdist_main_nodes_faceted <- ggplot(pp_df_main_nodes, aes(tree_id, pp, fill = precocity)) +
+  geom_col(width = 0.9, linewidth = 0) +
+  facet_grid(cols = vars(clade)) +
+  scale_fill_manual(values = clrs, guide = "none") +
+  labs(y = "Posterior probability",
+       x = "Sampled tree") +
+  theme_half_open(font_family = "Source Sans Pro",
+                  line_size = 0.25,
+                  font_size = 6,
+                  rel_small = 5.5/6,
+                  rel_tiny = 5/6,
+                  rel_large = 7/6) +
+  theme(strip.background = element_blank(),
+        strip.text = element_text(size = 7))
 
 ###############################################################################
 # ancestral states on the consensus phylogeny #################################
@@ -144,9 +143,11 @@ ppdist_theria <- plot_pp("Theria")
 add_cladelab <- function(.taxon, 
                          ln.offset, 
                          lab.offset, 
+                         text = NULL,
                          ...) {
   stopifnot(length(get_species_in_taxon(.taxon)) > 1)
-  arc.cladelabels(text = .taxon, 
+  if (is.null(text)) text <- .taxon
+  arc.cladelabels(text = text, 
                   node = get_node(tr_consensus, .taxon),
                   stretch = 1,
                   cex = 1,
@@ -176,14 +177,19 @@ plot_asr_results <- function() {
          bty = "n", 
          cex = 1.4)
   
-  add_cladelab("Eutheria", 1.14, 1.16)
+  nodelabels(node = get_node(tr_consensus, "Eutheria"), 
+             text = "Eutheria", 
+             frame = "none", 
+             cex = 1.2,
+             adj = c(-0.2, 0.5))
+  
   add_cladelab("Metatheria", 1.02, 1.04, orientation = "horizontal")
   add_cladelab("Prototheria", 1.02, 1.04, orientation = "horizontal")
   # infraclass
   add_cladelab("Laurasiatheria", 1.1, 1.12)
   add_cladelab("Euarchontoglires", 1.1, 1.12)
-  add_cladelab("Afrotheria", 1.02, 1.04)
-  add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
+  add_cladelab("Afrotheria", 1.1, 1.12, text = "Afroth.")
+  add_cladelab("Xenarthra", 1.1, 1.12, text = "Xen.")
   # orders
   add_cladelab("Primates", 1.06, 1.08)
   add_cladelab("Cetartiodactyla", 1.06, 1.08)
@@ -226,7 +232,7 @@ plot_asr_results <- function() {
   # families
   add_cladelab("Felidae", 1.02, 1.04)
   add_cladelab("Canidae", 1.02, 1.04)
-  add_cladelab("Ursidae", 1.02, 1.04)
+  add_cladelab("Ursidae", 1.02, 1.04, text = "Urs.")
   add_cladelab("Mustelidae", 1.02, 1.04)
   add_cladelab("Vespertilionidae", 1.02, 1.04)
   add_cladelab("Muridae", 1.02, 1.04)
@@ -254,8 +260,8 @@ cairo_pdf(here(figdir, "fig_scm_a_consensus-asr.pdf"),
           width = 13.5, 
           height = 7.5, 
           family = "Source Sans Pro", 
-          pointsize = 9.5)
-par(omi = c(0, 0.5, 0.5, 0.4),
+          pointsize = 10.5)
+par(omi = c(0, 0.5, 0, 0.4),
     mai = c(0, 0, 0, 0),
     xpd = NA)
 plot_asr_results()
@@ -268,8 +274,8 @@ png(here(figdir, "fig_scm_a_consensus-asr.png"),
     res = 600,
     type = "cairo",
     family = "Source Sans Pro", 
-    pointsize = 9.5)
-par(omi = c(0, 0.5, 0.5, 0.4),
+    pointsize = 10.5)
+par(omi = c(0, 0.5, 0, 0.4),
     mai = c(0, 0, 0, 0),
     xpd = NA)
 plot_asr_results()
@@ -283,7 +289,7 @@ asr_png <- png::readPNG(here(figdir, "fig_scm_a_consensus-asr.png"),
                         native = TRUE)
 
 composed <- wrap_plots(wrap_elements(full = asr_png), 
-           ppdist_main_nodes) +
+                       ppdist_main_nodes_faceted) +
   plot_layout(ncol = 1, heights = c(4, 1)) +
   plot_annotation(tag_levels = "a") &
   theme(plot.tag = element_text(face = 2, 
