@@ -92,4 +92,34 @@ ggsave(here(resdir, "fig_altriciality-comparison_by-order.pdf"),
 ggsave(here(resdir, "fig_altriciality-comparison_by-order.png"), 
        bm_ratio_by_order, width = 3.1, height = 3.1, dpi = 600, units = "in")
 
+# bm ratio % ==================================================================
+bm_ratio_pct <- ggplot(prec, aes(bm_ratio*100, rank07, fill = precocity)) +
+  geom_jitter(height = 0.1, shape = 21, stroke = 0.2, size = 1) +
+  facet_grid(rows = vars(rank03), space = "free", scales = "free") +
+  scale_fill_manual(values = clrs, name = NULL) +
+  guides(fill = guide_legend(override.aes = list(size = 2, stroke = 0.3), 
+                             position = "inside")) +
+  labs(x = "Relative Neonatal Body Mass (%)",
+       y = "Order") +
+  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme(strip.clip = "off",
+        strip.text.y = element_text(angle = 0, hjust = 0, size = 6),
+        strip.background = element_blank(),
+        panel.grid.major = element_line(linewidth = 0.25),
+        panel.grid.minor = element_blank(),
+        axis.title.x = element_markdown(size = 7),
+        axis.title.y = element_text(size = 7),
+        axis.text = element_text(size = 6),
+        legend.text = element_text(size = 6),
+        legend.background = element_blank(),
+        legend.position.inside = c(0.99, 0.99),
+        legend.justification.inside = c(1, 1),
+        legend.key.size = unit(0.075, "in")) 
+
+ggsave(here(resdir, "fig_altriciality-comparison_by-order_pct.pdf"), 
+       bm_ratio_pct, width = 3.1, height = 3.1, device = cairo_pdf)
+
+ggsave(here(resdir, "fig_altriciality-comparison_by-order_pct.png"), 
+       bm_ratio_pct, width = 3.1, height = 3.1, dpi = 600, units = "in")
+
 # end =========================================================================
