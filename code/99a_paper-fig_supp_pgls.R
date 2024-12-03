@@ -7,7 +7,6 @@ library(nlme)
 library(tidyverse)
 library(here)
 library(glue)
-library(gt)
 library(patchwork)
 
 
@@ -30,76 +29,6 @@ use_font <- "Source Sans Pro"
 prec <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))  
 pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
 tr_consensus_full <- read.nexus(here("data/trees/upham2019/consensus/DNA-only/consensus_full_with-binomial-tiplabels.tree"))
-
-###############################################################################
-# Number of altricial / precocial species by order: table #####################
-###############################################################################
-
-text_padding <- px(4)
-text_padding_horiz <- px(20)
-
-n_species_table <- prec %>% 
-  count(rank03, rank05, rank07, precocity) %>%
-  mutate(precocity = str_to_sentence(precocity)) %>% 
-  pivot_wider(id_cols = c("rank03", "rank05", "rank07"),
-              names_from = "precocity",
-              values_from = "n") %>% 
-  mutate(rank03_rank05 = ifelse(
-    rank03 != "Eutheria", rank03, paste0(rank03, " → ", rank05)
-  )) %>% 
-  select(-rank03, -rank05) %>% 
-  relocate(rank03_rank05) %>% 
-  mutate(rank03_rank05 = fct(rank03_rank05,
-                             levels = c("Prototheria",
-                                        "Metatheria",
-                                        "Eutheria → Xenarthra",
-                                        "Eutheria → Afrotheria",
-                                        "Eutheria → Laurasiatheria",
-                                        "Eutheria → Euarchontoglires"))) %>% 
-  arrange(rank03_rank05) %>% 
-  gt(rowname_col = "rank07", groupname_col = "rank03_rank05") %>% 
-  tab_style(
-    style = list(
-      cell_fill(color = "grey90"), 
-      cell_text(weight = 600)
-    ),
-    locations = list(
-      cells_row_groups()    
-      )
-  ) %>% 
-  tab_style(
-    style = cell_text(weight = 600),
-    locations = cells_column_labels()
-  ) %>% 
-  opt_table_font(font = use_font) %>% 
-  tab_options(
-    data_row.padding = text_padding,     
-    data_row.padding.horizontal = text_padding_horiz,
-    column_labels.padding = text_padding,
-    column_labels.padding.horizontal = text_padding_horiz,
-    row_group.padding = text_padding,
-    table.border.top.width = px(0),       
-    table.border.bottom.width = px(0),    
-    row_group.border.bottom.width = px(0),
-    row_group.border.top.width = px(0),
-    column_labels.border.top.width = px(0),
-    column_labels.border.bottom.width = px(0),
-    table.border.left.width = px(0),
-    table_body.border.bottom.width = px(1), 
-    table_body.border.top.width = px(0),
-    stub.border.width = px(0),
-    table_body.hlines.width = px(1),
-    grand_summary_row.padding = text_padding,
-    grand_summary_row.padding.horizontal = text_padding_horiz,
-    grand_summary_row.border.width = px(1),
-    grand_summary_row.background.color = "grey90"
-  ) %>% 
-  sub_missing(missing_text = ".") %>% 
-  grand_summary_rows(columns = c(Altricial, Intermediate, Precocial),
-                     fns = list("Total" = ~sum(., na.rm = TRUE)),
-                     side = "bottom")
-
-n_species_table
 
 ###############################################################################
 # gestation length vs body mass ###############################################
@@ -148,6 +77,8 @@ pgls_consensus <- gls(log(gestation_len_d) ~ log(adult_body_mass_g) + precocity,
 
 anova(pgls_consensus)
 summary(pgls_consensus)
+pgls_consensus_summary <- summary(pgls_consensus)
+pgls_consensus_summary$tTable %>% as.data.frame()
 
 # residuals of body mass regression agaist precocity ==========================
 pgls_consensus_bm <- gls(log(gestation_len_d) ~ log(adult_body_mass_g),
@@ -294,40 +225,33 @@ gl_vs_bm <- ggplot(prec_data,
 
 gl_vs_bm
 
+###############################################################################
+# combine subplots ############################################################
+###############################################################################
+
 gl_vs_bm_with_residuals_inset <- gl_vs_bm + 
   inset_element(prec_vs_bm_residuals, 
                 left = 0.675, 
                 right = 0.999, 
                 bottom = 0.001, 
-                top = 0.35)
-
-gl_vs_bm_with_residuals_inset
-
-###############################################################################
-# combine subplots ############################################################
-###############################################################################
-
-gtsave(n_species_table,
-       filename = here(resdir, "fig01a_n-species-table.png"), 
-       zoom = 10, expand = 2)
-
-n_species_png <- png::readPNG(here(resdir, "fig01a_n-species-table.png"), 
-                              native = TRUE)
-
-combined <- wrap_plots(wrap_elements(panel = n_species_png), 
-           gl_vs_bm_with_residuals_inset,
-           widths = c(1.15, 2)) +
+                top = 0.35) +
   plot_annotation(tag_levels = "a") &
   theme(plot.tag = element_text(face = "bold", size = text_size_tag))
 
-ggsave(here(resdir, "fig01_n-species-and-pgls.png"), 
-       plot = combined, 
-       width = 6.5, height = 4, dpi = 600)
+gl_vs_bm_with_residuals_inset
 
-ggsave(here(resdir, "fig01_n-species-and-pgls.pdf"), 
-       plot = combined, 
+# save files ==================================================================
+
+write_rds(pgls_consensus, here(resdir, "supp-tbl_pgls-coeffs-for-table.rds"))
+
+ggsave(here(resdir, "supp-fig_pgls.png"), 
+       plot = gl_vs_bm_with_residuals_inset, 
+       width = 5, height = 4, dpi = 600)
+
+ggsave(here(resdir, "supp-fig_pgls.pdf"), 
+       plot = gl_vs_bm_with_residuals_inset, 
        device = cairo_pdf,
-       width = 6.5, height = 4)
+       width = 5, height = 4)
 
 ###############################################################################
 
