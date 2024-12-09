@@ -60,6 +60,7 @@ vignettes/*.pdf
 docs/
 notes/
 data/
+manuscript/
 
 **/temp.R
 **/temp.qmd
