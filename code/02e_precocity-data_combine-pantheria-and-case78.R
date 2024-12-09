@@ -25,7 +25,8 @@ case78 <- case78 %>%
   mutate(precocity = case_when(
     precocity == "fetal" ~ "altricial",
     precocity == "A" ~ "altricial",
-    precocity %in% c("SA", "SP") ~ "intermediate",
+    precocity == "SA" ~ "altricial",
+    precocity == "SP" ~ "intermediate",
     precocity == "P" ~ "precocial"
   ))
 

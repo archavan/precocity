@@ -27,7 +27,7 @@ prec_data <- prec_data %>%
   mutate(precocity_recoded = case_when(
     precocity == "fetal" ~ "altricial",
     precocity == "A" ~ "altricial",
-    precocity == "SA" ~ "intermediate",
+    precocity == "SA" ~ "altricial",
     precocity == "SP" ~ "intermediate",
     precocity == "P" ~ "precocial"
   )) %>% 
