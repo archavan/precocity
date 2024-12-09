@@ -170,6 +170,10 @@ ggsave(here(figdir, "supp-fig_scm_case78-plus-pantheria_model-choice.png"),
        width = 3, height = 2.25, units = "in", 
        dpi = 600)
 
+# write rds of model choice plot so we can combine it with that from other data
+write_rds(model_fit_effect, 
+          here(figdir, "supp-fig_scm_case78-plus-pantheria_model-choice.rds"))
+
 # table for consensus tree ====================================================
 mw_consensus %>% 
   prettify_mw_anova() %>% 

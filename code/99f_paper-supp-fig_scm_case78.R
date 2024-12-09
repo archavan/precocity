@@ -403,4 +403,8 @@ ggsave(here(figdir, "supp-fig_scm_case78_model-choice.png"),
        width = 3, height = 2.25, units = "in", 
        dpi = 600)
 
+# so we can combine it with the same plot from case+pt
+write_rds(model_fit_effect,
+          here(figdir, "supp-fig_scm_case78_model-choice.rds"))
+
 # end =========================================================================
