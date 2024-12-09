@@ -57,6 +57,15 @@ taxa <- prec_data %>%
 # helper functions ############################################################
 ###############################################################################
 
+prettify_mw_anova <- function(x) {
+  x %>% 
+    rownames_to_column("model") %>% 
+    as_tibble() %>% 
+    janitor::clean_names() %>% 
+    mutate(model = str_remove(model, "fit_")) %>% 
+    mutate(model = str_to_upper(model))
+}
+
 get_taxonomic_rank <- function(.taxon) {
   tax_rank <- names(which(apply(taxa, 2, \(x) any(grepl(.taxon, x)))))
   if (length(tax_rank) == 0) stop("Taxon not found in data")
@@ -276,7 +285,7 @@ plot_asr_results <- function() {
 # plot_asr_results()
 # dev.off()
 
-png(here(figdir, "supp-fig_scm-case78_a_consensus-asr.png"), 
+png(here(figdir, "supp-fig_scm_case78_a_consensus-asr.png"), 
     width = 10, 
     height = 5.5, 
     units = "in",
@@ -294,7 +303,7 @@ dev.off()
 # ancestral state reconstruction: put together ################################
 ###############################################################################
 
-asr_png <- png::readPNG(here(figdir, "supp-fig_scm-case78_a_consensus-asr.png"), 
+asr_png <- png::readPNG(here(figdir, "supp-fig_scm_case78_a_consensus-asr.png"), 
                         native = TRUE)
 
 composed <- wrap_plots(wrap_elements(full = asr_png), 
@@ -306,7 +315,7 @@ composed <- wrap_plots(wrap_elements(full = asr_png),
                                 size = 8),
         plot.title = element_text(hjust = 0.5))
 
-ggsave(here(figdir, "supp-fig_scm-case78_composed_v1.png"), 
+ggsave(here(figdir, "supp-fig_scm_case78_composed_v1.png"), 
        composed, 
        width = 6.5, 
        height = 5, 
@@ -318,81 +327,80 @@ ggsave(here(figdir, "supp-fig_scm-case78_composed_v1.png"),
 ###############################################################################
 
 # delta AIC ###################################################################
-
-prettify_mw_anova <- function(x) {
-  x %>% 
-    rownames_to_column("model") %>% 
-    as_tibble() %>% 
-    janitor::clean_names() %>% 
-    mutate(model = str_remove(model, "fit_")) %>% 
-    mutate(model = str_to_upper(model))
-}
-
 mw_sample <- asr %>% 
   mutate(model_weights = purrr::map(model_weights, prettify_mw_anova)) %>% 
   unnest(model_weights)
 
 p_delta_aic_sample <- mw_sample %>% 
   mutate(delta_aic = aic - min(aic), .by = tr_id) %>% 
-  ggplot(aes(tr_id, model, fill = delta_aic)) +
-  geom_tile(color = "white") +
-  scale_fill_viridis_c() +
-  coord_cartesian(expand = FALSE) +
-  labs(x = "Sampled tree", y = "Model") +
-  guides(fill = guide_colorbar(direction = "horizontal", 
-                               position = "top",
-                               title = "∆ AIC")) +
-  theme_classic(base_line_size = 0.25, base_family = "Source Sans Pro") +
-  theme(legend.key.height = unit(5, "pt"),
-        legend.box.spacing = unit(0, "pt"),
-        legend.box.margin = margin(0, 0, 0, 0),
-        axis.text = element_text(size = 7),
+  ggplot(aes(tr_id, delta_aic, color = model)) +
+  geom_segment(aes(x = tr_id, xend = tr_id, y = 0, yend = delta_aic),
+               linewidth = 0.25) +
+  geom_point(size = 0.5) +
+  facet_grid(cols = vars(model)) +
+  guides(color = guide_legend(title = "Model", 
+                              override.aes = list(size = 2), 
+                              position = "bottom")) +
+  labs(x = "Sampled tree", y = "∆ AIC") +
+  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme(axis.text = element_text(size = 7),
         axis.title = element_text(size = 8),
-        legend.text = element_text(size = 7, angle = 270, hjust = 0, vjust = 0.5),
-        legend.title = element_text(size = 7))
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8),
+        strip.text = element_text(size = 8),
+        strip.background = element_blank())
 
-
-# Effect of model choice ######################################################
-
+# model weighsts ##############################################################
 m_weights <- mw_sample %>% 
   ggplot(aes(tr_id, weight, fill = model)) +
   geom_col() +
   scale_fill_discrete(name = "Model") +
+  guides(fill = guide_legend(position = "bottom")) +
   labs(x = "Sampled tree", y = "Model weight") +
-  theme_classic(base_line_size = 0.25, base_family = "Source Sans Pro") +
+  theme_bw(base_line_size = 0.25, base_family = "Source Sans Pro") +
   theme(
     axis.text = element_text(size = 7),
     axis.title = element_text(size = 8),
     legend.text = element_text(size = 7),
-    legend.title = element_text(size = 7),
+    legend.title = element_text(size = 8),
     legend.key.size = unit(0.75, "line")
   )
 
+# Effect of model choice ######################################################
 model_fit_effect <- mw_sample %>% 
   filter(model == "ER") %>%
   mutate(pp_eutheria = map2(ace, tr_pruned, ~ get_pp_at_node(.x, get_node(.y, "Eutheria")))) %>% 
   unnest_wider(pp_eutheria) %>% 
   ggplot(aes(weight, altricial)) +
-  geom_point(size = 1.5, color = "black", fill = "grey", shape = 21) +
+  geom_point(size = 1, color = "black", fill = "grey", shape = 21, stroke = 0.4) +
   labs(x = "Model Weight for ER",
        y = "Posterior prob. of altricial\nancestral state for Eutheria") +
-  theme_classic(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
   theme(axis.text = element_text(size = 7),
         axis.title = element_text(size = 8))
 
 # combine plots ###############################################################
 
-m_weights_composed <- p_delta_aic_sample / (m_weights | model_fit_effect) +
-  plot_layout(heights = c(1, 7.5)) +
+mw_aic_patch <- wrap_plots(p_delta_aic_sample, m_weights, ncol = 2) +
+  plot_layout(widths = c(3, 1)) +
   plot_annotation(tag_levels = "a") &
   theme(
     text = element_text(family = "Source Sans Pro", size = 6.5),
-    plot.tag = element_text(size = 8, face = "bold")
+    plot.tag = element_text(size = 8, face = "bold"),
+    legend.key.spacing = unit(2, "pt"),
+    legend.box.spacing = unit(0, "pt")
   )
 
-ggsave(here(figdir, "supp-fig_scm_case78_model-weights.png"),
-       m_weights_composed, 
-       width = 6.5, height = 3.5, units = "in", 
+# write plots #################################################################
+
+ggsave(here(figdir, "supp-fig_scm_case78_mw-aic.png"),
+       mw_aic_patch, 
+       width = 6.5, height = 2.4, units = "in", 
+       dpi = 600)
+
+ggsave(here(figdir, "supp-fig_scm_case78_model-choice.png"),
+       model_fit_effect, 
+       width = 3, height = 2.25, units = "in", 
        dpi = 600)
 
 # end =========================================================================

@@ -100,149 +100,75 @@ mw_sample <- asr %>%
 
 p_delta_aic_sample <- mw_sample %>% 
   mutate(delta_aic = aic - min(aic), .by = tr_id) %>% 
-  ggplot(aes(tr_id, model, fill = delta_aic)) +
-  geom_tile(color = "white") +
-  scale_fill_viridis_c() +
-  coord_cartesian(expand = FALSE) +
-  labs(x = "Sampled tree", y = "Model") +
-  guides(fill = guide_colorbar(direction = "horizontal", 
-                               position = "top",
-                               title = "∆ AIC")) +
-  theme_classic(base_line_size = 0.25, base_family = "Source Sans Pro") +
-  theme(legend.key.height = unit(5, "pt"),
-        legend.box.spacing = unit(0, "pt"),
-        legend.box.margin = margin(0, 0, 0, 0),
-        axis.text = element_text(size = 7),
+  ggplot(aes(tr_id, delta_aic, color = model)) +
+  geom_segment(aes(x = tr_id, xend = tr_id, y = 0, yend = delta_aic),
+               linewidth = 0.25) +
+  geom_point(size = 0.5) +
+  facet_grid(cols = vars(model)) +
+  guides(color = guide_legend(title = "Model", 
+                             override.aes = list(size = 2), 
+                             position = "bottom")) +
+  labs(x = "Sampled tree", y = "∆ AIC") +
+  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme(axis.text = element_text(size = 7),
         axis.title = element_text(size = 8),
-        legend.text = element_text(size = 7, angle = 270, hjust = 0, vjust = 0.5),
-        legend.title = element_text(size = 7))
+        legend.text = element_text(size = 7),
+        legend.title = element_text(size = 8),
+        strip.text = element_text(size = 8),
+        strip.background = element_blank())
 
-
-# Effect of model choice ######################################################
-
+# model weighsts ##############################################################
 m_weights <- mw_sample %>% 
   ggplot(aes(tr_id, weight, fill = model)) +
   geom_col() +
   scale_fill_discrete(name = "Model") +
+  guides(fill = guide_legend(position = "bottom")) +
   labs(x = "Sampled tree", y = "Model weight") +
-  theme_classic(base_line_size = 0.25, base_family = "Source Sans Pro") +
+  theme_bw(base_line_size = 0.25, base_family = "Source Sans Pro") +
   theme(
     axis.text = element_text(size = 7),
     axis.title = element_text(size = 8),
     legend.text = element_text(size = 7),
-    legend.title = element_text(size = 7),
+    legend.title = element_text(size = 8),
     legend.key.size = unit(0.75, "line")
   )
 
+# Effect of model choice ######################################################
 model_fit_effect <- mw_sample %>% 
   filter(model == "ER") %>%
   mutate(pp_eutheria = map2(ace, tr_pruned, ~ get_pp_at_node(.x, get_node(.y, "Eutheria")))) %>% 
   unnest_wider(pp_eutheria) %>% 
   ggplot(aes(weight, altricial)) +
-  geom_point(size = 1.5, color = "black", fill = "grey", shape = 21) +
+  geom_point(size = 1, color = "black", fill = "grey", shape = 21, stroke = 0.4) +
   labs(x = "Model Weight for ER",
        y = "Posterior prob. of altricial\nancestral state for Eutheria") +
-  theme_classic(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
   theme(axis.text = element_text(size = 7),
         axis.title = element_text(size = 8))
 
 # combine plots ###############################################################
 
-m_weights_composed <- p_delta_aic_sample / (m_weights | model_fit_effect) +
-  plot_layout(heights = c(1, 7.5)) +
-  plot_annotation(tag_levels = "a") &
-  theme(
-    text = element_text(family = "Source Sans Pro", size = 6.5),
-    plot.tag = element_text(size = 8, face = "bold")
-  )
-
-ggsave(here(figdir, "supp-fig_scm_case78_model-weights.png"),
-       m_weights_composed, 
-       width = 6.5, height = 3.5, units = "in", 
-       dpi = 600)
-
-
-
-
-
-
-
-
-
-
-
-mw_sample %>% 
-  filter(model == "ARD") %>%
-  mutate(pp_eutheria = map2(ace, tr_pruned, ~ get_pp_at_node(.x, get_node(.y, "Eutheria")))) %>% 
-  unnest_wider(pp_eutheria) %>% 
-  ggplot(aes(weight, precocial)) +
-  geom_point(size = 1.5, color = "black", fill = "grey", shape = 21) +
-  labs(x = "Model Weight for ARD",
-       y = "Posterior prob. of altricial\nancestral state for Eutheria") +
-  theme_classic(base_family = "Source Sans Pro", base_line_size = 0.25) +
-  theme(axis.text = element_text(size = 7),
-        axis.title = element_text(size = 8))
-
-
-mw_sample %>% 
-  mutate(delta_aic = aic - min(aic), .by = tr_id) %>% 
-  ggplot(aes(tr_id, delta_aic, fill = model)) +
-  geom_segment(aes(x = tr_id, xend = tr_id, y = 0, yend = delta_aic)) +
-  geom_point(shape = 21) +
-  facet_grid(rows = vars(model)) +
-  guides(fill = guide_legend(title = "Model", override.aes = list(size = 3))) +
-  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
-  theme(axis.text = element_text(size = 7),
-        axis.title = element_text(size = 8),
-        strip.text = element_text(size = 8),
-        strip.background = element_blank())
-  
-
-
-
-
-# plot AIC values for sampled trees ===========================================
-p_delta_aic_sample <- mw_sample %>% 
-  mutate(delta_aic = aic - min(aic), .by = tr_id) %>% 
-  ggplot(aes(tr_id, model, fill = delta_aic)) +
-  geom_tile(color = "white") +
-  scale_fill_viridis_c() +
-  coord_fixed(expand = FALSE) +
-  labs(x = "Sampled tree") +
-  guides(fill = guide_colorbar(direction = "horizontal", 
-                               position = "top",
-                               title = "∆ AIC")) +
-  theme_minimal() +
-  theme(legend.text = element_text(angle = 270, hjust = 0, vjust = 0.5))
-
-p_model_weights_sample <- mw_sample %>% 
-  ggplot(aes(tr_id, model, fill = weight)) +
-  geom_tile(color = "white") +
-  scale_fill_viridis_c() +
-  coord_fixed(expand = FALSE) +
-  labs(x = "Sampled tree") +
-  guides(fill = guide_colourbar(direction = "horizontal", 
-                               position = "top", 
-                               title = "Model Weight")) +
-  theme_minimal() +
-  theme(legend.text = element_text(angle = 270, hjust = 0, vjust = 0.5))
-  
-
-aic_mw_composed <- wrap_plots(p_delta_aic_sample, p_model_weights_sample, ncol = 1) +
+mw_aic_patch <- wrap_plots(p_delta_aic_sample, m_weights, ncol = 2) +
+  plot_layout(widths = c(3, 1)) +
   plot_annotation(tag_levels = "a") &
   theme(
     text = element_text(family = "Source Sans Pro", size = 6.5),
     plot.tag = element_text(size = 8, face = "bold"),
-    legend.key.height = unit(5, "pt"),
-    legend.box.spacing = unit(0, "pt"),
-    legend.box.margin = margin(0, 0, 0, 0)
+    legend.key.spacing = unit(2, "pt"),
+    legend.box.spacing = unit(0, "pt")
   )
 
-ggsave(filename = here(figdir, "supp-fig_scm_case-plus-pantheria_model-weights.png"),
-       plot = aic_mw_composed, 
-       width = 6.5, height = 2.5, 
-       device = ragg::agg_png,
-       units = "in", dpi = 600)
+# write plots #################################################################
+
+ggsave(here(figdir, "supp-fig_scm_case78-plus-pantheria_mw-aic.png"),
+       mw_aic_patch, 
+       width = 6.5, height = 2.5, units = "in", 
+       dpi = 600)
+
+ggsave(here(figdir, "supp-fig_scm_case78-plus-pantheria_model-choice.png"),
+       model_fit_effect, 
+       width = 3, height = 2, units = "in", 
+       dpi = 600)
 
 # table for consensus tree ====================================================
 mw_consensus %>% 

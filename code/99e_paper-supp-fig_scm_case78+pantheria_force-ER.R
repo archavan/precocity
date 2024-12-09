@@ -257,16 +257,16 @@ plot_asr_results <- function() {
                   mark.node = FALSE)
 }
 
-cairo_pdf(here(figdir, "supp-fig_scm_force-ER_consensus-asr.pdf"), 
-          width = 13.5, 
-          height = 7.5, 
-          family = "Source Sans Pro", 
-          pointsize = 10.5)
-par(omi = c(0, 0.5, 0, 0.4),
-    mai = c(0, 0, 0, 0),
-    xpd = NA)
-plot_asr_results()
-dev.off()
+# cairo_pdf(here(figdir, "supp-fig_scm_force-ER_consensus-asr.pdf"), 
+#           width = 13.5, 
+#           height = 7.5, 
+#           family = "Source Sans Pro", 
+#           pointsize = 10.5)
+# par(omi = c(0, 0.5, 0, 0.4),
+#     mai = c(0, 0, 0, 0),
+#     xpd = NA)
+# plot_asr_results()
+# dev.off()
 
 png(here(figdir, "supp-fig_scm_force-ER_consensus-asr.png"), 
     width = 13.5, 
@@ -305,11 +305,11 @@ ggsave(here(figdir, "supp-fig_scm_force-ER_composed_v1.png"),
        units = "in",
        dpi = 600)
 
-ggsave(here(figdir, "supp-fig_scm_force-ER_composed_v1.pdf"), 
-       composed, 
-       width = 6.5, 
-       height = 5, 
-       units = "in",
-       device = cairo_pdf)
+# ggsave(here(figdir, "supp-fig_scm_force-ER_composed_v1.pdf"), 
+#        composed, 
+#        width = 6.5, 
+#        height = 5, 
+#        units = "in",
+#        device = cairo_pdf)
 
 # end =========================================================================
