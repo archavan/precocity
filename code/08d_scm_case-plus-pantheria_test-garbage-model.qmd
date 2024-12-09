@@ -1,0 +1,84 @@
+---
+title: Test "garbage model" against Mk models
+author: Arun Chavan
+format: 
+  html:
+    theme: cosmo
+    self-contained: true
+toc: true
+editor: source
+fontsize: 0.95em
+---
+
+Started: 2024-03-07  
+Last edited: `r format(Sys.time())`
+
+# Background
+
+This is based on [Harmon's book](https://bio.libretexts.org/Bookshelves/Evolutionary_Developmental_Biology/Phylogenetic_Comparative_Methods_(Harmon)/08%3A_Fitting_Models_of_Discrete_Character_Evolution/8.05%3A_Exploring_Mk_-_the_%22total_garbage%22_test)
+
+Sometimes, ML estimation of the rate parameter $q$ "fails" in the sense that the after a certain (generally high) value of $q$, there is a flat ridge rather than a peak of likelihood. In this case, the evolution is so fast that that the character states of all lineages are random and do not depend on the tree shape. 
+
+Harmon writes about a simple test to evaluate whether your model is better than the above "drawing out of hat" model of trait evolution, which the author calls "total garbage" test. This test essentially tells us whether our model carries any historical information at all or if it has been completely lost due to a high value of the rate parameter. 
+
+The test is simple. Can be generalized for more than 2 states. Here n0 is the number of species with character state 0, and p is the probability of character state 0, which is calculated as n0/n. 
+
+$$
+L_{garbage} = p^{n_0}(1 − p)^{n − n_0}
+$$
+
+or more usefully on natural log scale,
+
+$$
+_{\ln L_{\text{garbage}}} = n_0 \cdot \ln(p) + (n - n_0) \cdot \ln(1 - p)
+$$
+
+If the likelihood value of our Mk model is the same as the likelihood value of the garbage model, we have lost historical information. Ideally, our Mk model should have a hight likelihood. 
+
+
+
+# Setup
+```{r, message=FALSE, warning=FALSE}
+knitr::opts_chunk$set(dpi = 300, collapse = TRUE, comment = "#>")
+
+library(tidyverse)
+library(here)
+
+analysis_name <- "case78-plus-pantheria"
+resdir <- here("results/scm", analysis_name)
+```
+
+
+# Data
+
+```{r}
+#| message: false
+#| warning: false
+
+prec <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
+model_weights <- read_rds(here(resdir, "consensus/model-weights.rds"))
+```
+
+# Calculate garbage model likelihood
+
+```{r}
+prec %>% 
+  count(precocity) %>% 
+  mutate(prob = n/sum(n)) %>% 
+  mutate(lnL = n * log(prob)) %>% 
+  pull(lnL) %>% 
+  sum()
+```
+
+
+```{r}
+model_weights
+```
+
+
+The log likehood of all of our Mk models is much higher than the log likelihood of the garbage model, suggesting that out models do carry phylogenetic information. 
+
+# Session Info
+```{r session_info, eval=TRUE}
+sessionInfo()
+```
