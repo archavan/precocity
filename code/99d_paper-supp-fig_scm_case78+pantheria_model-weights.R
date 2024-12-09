@@ -162,12 +162,12 @@ mw_aic_patch <- wrap_plots(p_delta_aic_sample, m_weights, ncol = 2) +
 
 ggsave(here(figdir, "supp-fig_scm_case78-plus-pantheria_mw-aic.png"),
        mw_aic_patch, 
-       width = 6.5, height = 2.5, units = "in", 
+       width = 6.5, height = 2.4, units = "in", 
        dpi = 600)
 
 ggsave(here(figdir, "supp-fig_scm_case78-plus-pantheria_model-choice.png"),
        model_fit_effect, 
-       width = 3, height = 2, units = "in", 
+       width = 3, height = 2.25, units = "in", 
        dpi = 600)
 
 # table for consensus tree ====================================================
