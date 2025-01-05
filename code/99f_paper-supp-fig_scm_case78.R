@@ -407,4 +407,29 @@ ggsave(here(figdir, "supp-fig_scm_case78_model-choice.png"),
 write_rds(model_fit_effect,
           here(figdir, "supp-fig_scm_case78_model-choice.rds"))
 
+# summary stats ===============================================================
+mw_sample %>% 
+  mutate(delta_aic = aic - min(aic), .by = tr_id) %>% 
+  group_by(model) %>% 
+  summarise(mean_weight = mean(weight),
+            mean_delta_aic = mean(delta_aic)) %>% 
+  ungroup()
+
+
+get_pp_summary_stats <- function(.taxon) {
+  get_pp_df(.taxon) %>% 
+    summarise(altricial_mean = mean(altricial),
+              altricial_sd = sd(altricial),
+              intermediate_mean = mean(intermediate),
+              intermediate_sd = sd(intermediate),
+              precocial_mean = mean(precocial),
+              precocial_sd = sd(precocial))
+}
+
+get_pp_summary_stats("Theria")
+get_pp_summary_stats("Mammalia")
+get_pp_summary_stats("Eutheria")
+get_pp_summary_stats("Prototheria")
+get_pp_summary_stats("Metatheria")
+
 # end =========================================================================
