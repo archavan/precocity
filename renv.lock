@@ -1379,21 +1379,6 @@
       ],
       "Hash": "01f28d4278f15c76cddbea05899c5d6f"
     },
-    "plot2": {
-      "Package": "plot2",
-      "Version": "0.0.4",
-      "Source": "Repository",
-      "Repository": "https://grantmcdermott.r-universe.dev",
-      "Requirements": [
-        "R",
-        "grDevices",
-        "graphics",
-        "methods",
-        "stats",
-        "utils"
-      ],
-      "Hash": "aa647812a0d335319bd1baa2fa842f0a"
-    },
     "plotly": {
       "Package": "plotly",
       "Version": "4.10.4",
