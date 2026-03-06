@@ -61,6 +61,7 @@ docs/
 notes/
 data/
 manuscript/
+scratch/
 
 **/temp.R
 **/temp.qmd
