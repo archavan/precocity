@@ -3,7 +3,7 @@
 
 # background ==================================================================
 
-# Run stochastic character mapping on a samples of 100 trees from Upham et al. 
+# Run stochastic character mapping on a samples of 100 trees from Upham et al.
 
 # setup =======================================================================
 library(tidyverse)
@@ -29,9 +29,10 @@ fs::dir_create(resdir)
 # tip data ====================================================================
 prec_data <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
 
-prec_data <- prec_data %>% 
-  mutate(precocity = fct(precocity, 
-                         c("altricial", "intermediate", "precocial")))
+prec_data <- prec_data %>%
+  mutate(
+    precocity = fct(precocity, c("altricial", "intermediate", "precocial"))
+  )
 
 prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
 
@@ -42,7 +43,7 @@ tr100 <- read.nexus(here("data/trees/upham2019/sample/2024-02-21/output.nex"))
 tr <- tr100[[tree_id]]
 tr_pruned <- prune_tree_for_fitmk(tr, prec_tipdata)
 fit_mk <- fit_single_model(tr_pruned, prec_tipdata, model_to_test)
-simmap_ace <- run_simmap_and_get_ace(fit_mk, 1000) 
+simmap_ace <- run_simmap_and_get_ace(fit_mk, 1000)
 
 # write output ================================================================
 write_rds(tr_pruned, file = here(resdir, "tree_pruned.rds"))
@@ -50,4 +51,3 @@ write_rds(fit_mk, here(resdir, "model-fit.rds"))
 write_rds(simmap_ace, here(resdir, "ace.rds"))
 
 # end =========================================================================
-

@@ -5,10 +5,10 @@ figdir <- here("results/99_paper-figs/")
 
 # Mean estimtes and 70% CI from Werneburg et al, Table 1
 df <- tribble(
-  ~Trait,          ~mean, ~lower, ~upper,
-   "Birth",         125,   89,     161,
-   "Fur developed", 149,   112,    186,
-   "Eyelids open",  150,   95,     205
+  ~Trait          , ~mean , ~lower , ~upper ,
+  "Birth"         ,   125 ,     89 ,    161 ,
+  "Fur developed" ,   149 ,    112 ,    186 ,
+  "Eyelids open"  ,   150 ,     95 ,    205
 )
 
 plac <- ggplot(df, aes(mean, Trait)) +
@@ -21,10 +21,15 @@ plac <- ggplot(df, aes(mean, Trait)) +
     axis.text = element_text(size = 7, color = "black"),
     axis.title = element_text(size = 8, color = "black"),
     panel.grid.minor = element_blank()
-    )
+  )
 
-ggsave(here(figdir, "supp-fig_werneburg-estimates.png"), 
-       plac, 
-       width = 3, height = 1.5, units = "in", dpi = 600)
+ggsave(
+  here(figdir, "supp-fig_werneburg-estimates.png"),
+  plac,
+  width = 3,
+  height = 1.5,
+  units = "in",
+  dpi = 600
+)
 
 # end =========================================================================

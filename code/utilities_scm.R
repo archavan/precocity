@@ -1,6 +1,5 @@
 # functions for running stochastic character mapping.
 
-
 # =============================================================================
 
 #' Prune tree for running `fitMk()`
@@ -17,16 +16,16 @@ prune_tree_for_fitmk <- function(.phy, .dat) {
 
   .phy_pruned <- drop.tip(.phy, which(!(.phy$tip.label %in% names(.dat))))
   .phy_pruned <- ladderize(.phy_pruned)
-  
+
   return(.phy_pruned)
 }
 
 # =============================================================================
 
 #' Fit models
-#' 
-#' Currently only does ER, SYM, and ARD models. Need to modify in future to take 
-#'    any set of provided models.  
+#'
+#' Currently only does ER, SYM, and ARD models. Need to modify in future to take
+#'    any set of provided models.
 #'
 #' @param .phy tree
 #' @param .dat tip data as a named vector where names are tip labels in tree
@@ -35,21 +34,21 @@ prune_tree_for_fitmk <- function(.phy, .dat) {
 #' @export
 #'
 #' @examples
-#' 
+#'
 fit_models <- function(.phy, .dat) {
   .dat_sorted <- .dat[.phy$tip.label]
   stopifnot(identical(names(.dat_sorted), .phy$tip.label))
-  
+
   # fit models
   message("    fitting models...")
-  fit_er  <- fitMk(.phy, .dat_sorted, model = "ER",  pi = "estimated")
+  fit_er <- fitMk(.phy, .dat_sorted, model = "ER", pi = "estimated")
   fit_sym <- fitMk(.phy, .dat_sorted, model = "SYM", pi = "estimated")
   fit_ard <- fitMk(.phy, .dat_sorted, model = "ARD", pi = "estimated")
-  
+
   # model comparison
   message("    running model comparison...")
   fit_aov <- anova(fit_er, fit_sym, fit_ard)
-  
+
   return(fit_aov)
 }
 
@@ -64,14 +63,14 @@ fit_models <- function(.phy, .dat) {
 #' @export
 #'
 #' @examples
-#' 
+#'
 fit_single_model <- function(.phy, .dat, .model) {
   .dat_sorted <- .dat[.phy$tip.label]
   stopifnot(identical(names(.dat_sorted), .phy$tip.label))
-  
+
   message("    fitting model...")
-  fit <- fitMk(.phy, .dat_sorted, model = .model,  pi = "estimated")
-  
+  fit <- fitMk(.phy, .dat_sorted, model = .model, pi = "estimated")
+
   return(fit)
 }
 
@@ -94,8 +93,8 @@ run_simmap <- function(.models_aov, .nsim = 1000) {
 
 #' Wrapper to run simmap and get ancestral character estimates
 #'
-#' @param .models_aov 
-#' @param .nsim 
+#' @param .models_aov
+#' @param .nsim
 #'
 #' @return
 #' @export

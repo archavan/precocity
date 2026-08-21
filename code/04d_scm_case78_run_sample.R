@@ -3,7 +3,7 @@
 
 # background ==================================================================
 
-# Run stochastic character mapping on a samples of 100 trees from Upham et al. 
+# Run stochastic character mapping on a samples of 100 trees from Upham et al.
 
 # setup =======================================================================
 library(tidyverse)
@@ -28,16 +28,22 @@ fs::dir_create(resdir)
 # tip data ====================================================================
 prec_data <- read_csv(here("data/03_coded/case78/precocity_case78_v1.csv"))
 
-prec_data <- prec_data %>% 
-  mutate(precocity_recoded = case_when(
-    precocity == "fetal" ~ "altricial",
-    precocity == "A" ~ "altricial",
-    precocity == "SA" ~ "intermediate",
-    precocity == "SP" ~ "intermediate",
-    precocity == "P" ~ "precocial"
-  )) %>% 
-  mutate(precocity_recoded = fct(precocity_recoded, 
-                                 c("altricial", "intermediate", "precocial")))
+prec_data <- prec_data %>%
+  mutate(
+    precocity_recoded = case_when(
+      precocity == "fetal" ~ "altricial",
+      precocity == "A" ~ "altricial",
+      precocity == "SA" ~ "intermediate",
+      precocity == "SP" ~ "intermediate",
+      precocity == "P" ~ "precocial"
+    )
+  ) %>%
+  mutate(
+    precocity_recoded = fct(
+      precocity_recoded,
+      c("altricial", "intermediate", "precocial")
+    )
+  )
 
 prec_tipdata <- set_names(prec_data$precocity_recoded, prec_data$binomial)
 
@@ -48,7 +54,7 @@ tr100 <- read.nexus(here("data/trees/upham2019/sample/2024-02-21/output.nex"))
 tr <- tr100[[tree_id]]
 tr_pruned <- prune_tree_for_fitmk(tr, prec_tipdata)
 fit_aov <- fit_models(tr_pruned, prec_tipdata)
-simmap_ace <- run_simmap_and_get_ace(fit_aov, 1000) 
+simmap_ace <- run_simmap_and_get_ace(fit_aov, 1000)
 
 # write output ================================================================
 write_rds(tr_pruned, file = here(resdir, "tree_pruned.rds"))
@@ -56,4 +62,3 @@ write_rds(fit_aov, here(resdir, "model-weights.rds"))
 write_rds(simmap_ace, here(resdir, "ace.rds"))
 
 # end =========================================================================
-
