@@ -59,27 +59,33 @@ For platypus, PanTHERIA also doesn't have neonate body mass. But Ferner et al (2
 
 
 ```{r}
-pt <- pt %>% 
-  mutate(age_at_eye_opening_d = case_when(
-    binomial == "Ornithorhynchus_anatinus" ~ 81,
-    binomial == "Tachyglossus_aculeatus" ~ 70,
-    .default = age_at_eye_opening_d
-  )) %>% 
-  mutate(neonate_body_mass_g = case_when(
-    binomial == "Ornithorhynchus_anatinus" ~ 0.35,
-    .default = neonate_body_mass_g
-  ))
+pt <- pt %>%
+  mutate(
+    age_at_eye_opening_d = case_when(
+      binomial == "Ornithorhynchus_anatinus" ~ 81,
+      binomial == "Tachyglossus_aculeatus" ~ 70,
+      .default = age_at_eye_opening_d
+    )
+  ) %>%
+  mutate(
+    neonate_body_mass_g = case_when(
+      binomial == "Ornithorhynchus_anatinus" ~ 0.35,
+      .default = neonate_body_mass_g
+    )
+  )
 ```
 
 ### Filter PanTHERIA data
 
 ```{r}
-pt_non_na <-  pt %>% 
-  filter(!is.na(adult_body_mass_g), 
-         !is.na(gestation_len_d),
-         !is.na(litter_size),
-         !is.na(neonate_body_mass_g),
-         !is.na(age_at_eye_opening_d))
+pt_non_na <- pt %>%
+  filter(
+    !is.na(adult_body_mass_g),
+    !is.na(gestation_len_d),
+    !is.na(litter_size),
+    !is.na(neonate_body_mass_g),
+    !is.na(age_at_eye_opening_d)
+  )
 
 pt_non_na
 
@@ -111,22 +117,30 @@ I will however use a modified version of this approach:
 First, we discretize litter size and age at eye opening following Martin and MacLarnon. 
 
 ```{r}
-pt_non_na <- pt_non_na %>% 
-    mutate(litter_size_discrete = case_when(
+pt_non_na <- pt_non_na %>%
+  mutate(
+    litter_size_discrete = case_when(
       litter_size < 1.5 ~ "low", # <1.5
       litter_size >= 1.5 & litter_size < 3 ~ "medium", # [1.5-3)
       litter_size >= 3 ~ "high" # ≥3
-    )) %>% 
-    mutate(age_at_eye_opening_discrete = case_when(
+    )
+  ) %>%
+  mutate(
+    age_at_eye_opening_discrete = case_when(
       age_at_eye_opening_d == 0 ~ "low", # 0
       age_at_eye_opening_d > 0 & age_at_eye_opening_d < 5 ~ "medium", # (0-5)
       age_at_eye_opening_d >= 5 ~ "high" # ≥5
-    )) %>% 
+    )
+  ) %>%
   mutate(
-    litter_size_discrete = factor(litter_size_discrete, 
-                                  levels = c("low", "medium", "high")),
-    age_at_eye_opening_discrete = factor(age_at_eye_opening_discrete,
-                                         levels = c("low", "medium", "high"))
+    litter_size_discrete = factor(
+      litter_size_discrete,
+      levels = c("low", "medium", "high")
+    ),
+    age_at_eye_opening_discrete = factor(
+      age_at_eye_opening_discrete,
+      levels = c("low", "medium", "high")
+    )
   )
 ```
   
@@ -134,34 +148,40 @@ The distribution of litter size coloured by discretized age at eye opening looks
 
 ```{r}
 ggplot(pt_non_na, aes(litter_size, fill = age_at_eye_opening_discrete)) +
-  geom_histogram(position = position_dodge(preserve = "single"), 
-                 alpha = 0.7, 
-                 color = "white", 
-                 bins = 25) +
-  facet_grid(rows = vars(rank03),
-             scales = "free_y") +
+  geom_histogram(
+    position = position_dodge(preserve = "single"),
+    alpha = 0.7,
+    color = "white",
+    bins = 25
+  ) +
+  facet_grid(rows = vars(rank03), scales = "free_y") +
   theme_bw()
 ```
 
 Table of discretized litter size and age at eye opening:
 
 ```{r}
-table(pt_non_na$litter_size_discrete, 
-      pt_non_na$age_at_eye_opening_discrete, 
-      dnn = c("litter_size_discrete", 
-              "age_at_eye_opening_discrete")) 
+table(
+  pt_non_na$litter_size_discrete,
+  pt_non_na$age_at_eye_opening_discrete,
+  dnn = c("litter_size_discrete", "age_at_eye_opening_discrete")
+)
 ```
 
 ## Coding based on the discretized variables: algorithmic coding
 
 ```{r}
-pt_coded_algorithmic <- pt_non_na %>% 
-  mutate(precocity = case_when(
-    age_at_eye_opening_discrete == "high" ~ "altricial",
-    age_at_eye_opening_discrete == "low" & litter_size_discrete == "low" ~ "precocial",
-    age_at_eye_opening_discrete == "medium" & litter_size_discrete == "medium" ~ "intermediate",
-    .default = NA_character_
-  )) %>% 
+pt_coded_algorithmic <- pt_non_na %>%
+  mutate(
+    precocity = case_when(
+      age_at_eye_opening_discrete == "high" ~ "altricial",
+      age_at_eye_opening_discrete == "low" &
+        litter_size_discrete == "low" ~ "precocial",
+      age_at_eye_opening_discrete == "medium" &
+        litter_size_discrete == "medium" ~ "intermediate",
+      .default = NA_character_
+    )
+  ) %>%
   mutate(coding_method = ifelse(!is.na(precocity), "algorithmic", "manual"))
 ```
 
@@ -171,8 +191,8 @@ There are 31 species that need to be coded manually.
 
 ```{r}
 fs::dir_create(here("data/03_coded/pantheria/manual"))
-pt_coded_algorithmic %>% 
-  filter(is.na(precocity)) %>% 
+pt_coded_algorithmic %>%
+  filter(is.na(precocity)) %>%
   write_csv(here("data/03_coded/pantheria/manual/to-code.csv"))
 ```
 
@@ -185,16 +205,20 @@ pt_coded_algorithmic %>%
 manually_coded <- read_csv(here("data/03_coded/pantheria/manual/coded.csv"))
 
 # if precocity has not been defined by algorithmic methods, use manually coded value
-pt_coded <- pt_coded_algorithmic %>% 
-  mutate(precocity = map2_chr(
-    binomial, 
-    precocity,
-    function(x, y) {
-      ifelse(is.na(y),
-             manually_coded$precocity[which(manually_coded$binomial == x)],
-             y)
-    }
-  ))
+pt_coded <- pt_coded_algorithmic %>%
+  mutate(
+    precocity = map2_chr(
+      binomial,
+      precocity,
+      function(x, y) {
+        ifelse(
+          is.na(y),
+          manually_coded$precocity[which(manually_coded$binomial == x)],
+          y
+        )
+      }
+    )
+  )
 ```
 
 # Explore precocity-coded data
@@ -206,28 +230,27 @@ count(pt_coded, precocity)
 ```
 
 ```{r}
-table(pt_coded$litter_size_discrete, 
-      pt_coded$age_at_eye_opening_discrete, 
-      dnn = c("litter_size_discrete", 
-              "age_at_eye_opening_discrete")) 
+table(
+  pt_coded$litter_size_discrete,
+  pt_coded$age_at_eye_opening_discrete,
+  dnn = c("litter_size_discrete", "age_at_eye_opening_discrete")
+)
 ```
 
 ## Manual vs algorithmic coding
 
 ```{r}
-pt_coded %>% 
+pt_coded %>%
   count(precocity, coding_method)
 ```
 
 ```{r}
-pt_coded %>% 
-  mutate(text_label = ifelse(coding_method == "manual",
-                             binomial,
-                             NA_character_)) %>% 
+pt_coded %>%
+  mutate(
+    text_label = ifelse(coding_method == "manual", binomial, NA_character_)
+  ) %>%
   ggplot(aes(adult_body_mass_g, gestation_len_d, label = text_label)) +
-  geom_point(aes(shape = coding_method, 
-                 color = precocity), 
-             size = 2) +
+  geom_point(aes(shape = coding_method, color = precocity), size = 2) +
   geom_text_repel(size = 2.5) +
   scale_x_log10() +
   scale_y_log10() +
@@ -244,13 +267,15 @@ The only thing that stands out to me right now are the two data points in the ot
 tax_coverage <- tibble(order = unique(spp$rank07))
 
 calc_fraction <- function(.data, .order) {
-  length(which(.data$rank07 == .order))/length(.data$rank07)
+  length(which(.data$rank07 == .order)) / length(.data$rank07)
 }
 
-tax_coverage <- tax_coverage %>% 
-  mutate(cvg_base = map_dbl(order, ~ calc_fraction(spp, .x)),
-         cvg_pt_coded = map_dbl(order, ~ calc_fraction(pt_coded, .x))) %>% 
-  mutate(enrichment = cvg_pt_coded/cvg_base) %>% 
+tax_coverage <- tax_coverage %>%
+  mutate(
+    cvg_base = map_dbl(order, ~ calc_fraction(spp, .x)),
+    cvg_pt_coded = map_dbl(order, ~ calc_fraction(pt_coded, .x))
+  ) %>%
+  mutate(enrichment = cvg_pt_coded / cvg_base) %>%
   arrange(enrichment)
 
 print(tax_coverage, n = Inf)
@@ -259,16 +284,18 @@ print(tax_coverage, n = Inf)
 There are 17 orders that are underrepresented, but 10 orders will be severely underrepresented in the precocity data (less than 0.1 enrichment).
 
 ```{r}
-# data for all species in orders that will be underrepresented. 
-underrep <- spp %>% 
-  filter(rank07 %in% tax_coverage$order[which(tax_coverage$enrichment < 0.1)]) %>% 
+# data for all species in orders that will be underrepresented.
+underrep <- spp %>%
+  filter(
+    rank07 %in% tax_coverage$order[which(tax_coverage$enrichment < 0.1)]
+  ) %>%
   filter(!(binomial %in% pt_coded$binomial))
 
 underrep
 ```
 
 ```{r}
-count(underrep, rank07) %>% 
+count(underrep, rank07) %>%
   arrange(-n)
 ```
 
@@ -278,7 +305,10 @@ count(underrep, rank07) %>%
 write_csv(pt_coded, here("data/03_coded/pantheria/precocity_pantheria_v1.csv"))
 
 write_csv(tax_coverage, here("data/03_coded/pantheria/taxonomic-coverage.csv"))
-write_csv(underrep, here("data/03_coded/pantheria/spp-from-underrepresented-orders.csv"))
+write_csv(
+  underrep,
+  here("data/03_coded/pantheria/spp-from-underrepresented-orders.csv")
+)
 ```
 
 # Session Info

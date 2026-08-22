@@ -35,14 +35,22 @@ dr12 <- read_csv(here("data/trees/dosReis2012/dosReis2012_all-taxa.csv"))
 up19 <- read_csv(here("data/trees/upham2019/upham2019_all-taxa.csv"))
 
 # traits
-kd <- read_excel(here("data/traits/MP-KD/MammaliaData_MP_KD_20161207.xlsx"), 
-                 na = c("", "NA"))
-pt <- read_tsv(here("data/traits/PanTHERIA/PanTHERIA_1-0_WR05_Aug2008.txt"),
-               na = c(-999, "-999", "", "NA"), guess_max = 10000)
-mv <- read_csv(here("data/traits/Myhrvold/Amniote_Database_Aug_2015.csv"), 
-               na = "-999", guess_max = 10000)
+kd <- read_excel(
+  here("data/traits/MP-KD/MammaliaData_MP_KD_20161207.xlsx"),
+  na = c("", "NA")
+)
+pt <- read_tsv(
+  here("data/traits/PanTHERIA/PanTHERIA_1-0_WR05_Aug2008.txt"),
+  na = c(-999, "-999", "", "NA"),
+  guess_max = 10000
+)
+mv <- read_csv(
+  here("data/traits/Myhrvold/Amniote_Database_Aug_2015.csv"),
+  na = "-999",
+  guess_max = 10000
+)
 
-# list of mammalian families 
+# list of mammalian families
 families <- read_csv(here("data/taxa/families.csv"))
 
 # curated synonyms mapping older binomials onto Upham 2019 tip labels
@@ -52,51 +60,57 @@ synonyms <- read_csv(here("data/taxa/synonyms_upham2019.csv"))
 Keep relevant variables and clean up: 
 
 ```{r}
-pt <- pt %>% 
-  select(family = MSW05_Family, 
-         genus = MSW05_Genus, 
-         species = MSW05_Species, 
-         binomial = MSW05_Binomial,
-         adult_body_mass_g = `5-1_AdultBodyMass_g`,
-         gestation_len_d = `9-1_GestationLen_d`,
-         litter_size = `15-1_LitterSize`,
-         age_at_eye_opening_d = `2-1_AgeatEyeOpening_d`,
-         weaning_age_d = `25-1_WeaningAge_d`,
-         neonate_body_mass_g = `5-3_NeonateBodyMass_g`)
+pt <- pt %>%
+  select(
+    family = MSW05_Family,
+    genus = MSW05_Genus,
+    species = MSW05_Species,
+    binomial = MSW05_Binomial,
+    adult_body_mass_g = `5-1_AdultBodyMass_g`,
+    gestation_len_d = `9-1_GestationLen_d`,
+    litter_size = `15-1_LitterSize`,
+    age_at_eye_opening_d = `2-1_AgeatEyeOpening_d`,
+    weaning_age_d = `25-1_WeaningAge_d`,
+    neonate_body_mass_g = `5-3_NeonateBodyMass_g`
+  )
 
 pt$binomial <- str_replace_all(pt$binomial, "\\s+", "_")
 
 # replacing -999 with NA did not work in read_tsv
 replace_999 <- function(x) if_else(x == -999, NA, x)
 
-pt <- pt %>% 
+pt <- pt %>%
   mutate(across(where(is.double), replace_999))
 ```
 
 ```{r}
-mv <- mv %>% 
-  filter(class == "Mammalia") %>% 
-  select(family,
-         genus, 
-         species,
-         common_name, 
-         litter_size = litter_or_clutch_size_n,
-         adult_body_mass_g,
-         gestation_len_d = gestation_d,
-         weaning_age_d = weaning_d,
-         neonate_body_mass_g = birth_or_hatching_weight_g) %>% 
-  mutate(binomial = paste0(genus, "_", species)) %>% 
+mv <- mv %>%
+  filter(class == "Mammalia") %>%
+  select(
+    family,
+    genus,
+    species,
+    common_name,
+    litter_size = litter_or_clutch_size_n,
+    adult_body_mass_g,
+    gestation_len_d = gestation_d,
+    weaning_age_d = weaning_d,
+    neonate_body_mass_g = birth_or_hatching_weight_g
+  ) %>%
+  mutate(binomial = paste0(genus, "_", species)) %>%
   relocate(binomial, .after = species)
 ```
 
 ```{r}
-kd <- kd %>% 
-  select(binomial = Species,
-         adult_body_mass_g = AdultBodyMass_g,
-         gestation_len_d = GestationLen_d,
-         age_at_eye_opening_d = AgeatEyeOpening_d,
-         litter_size = LitterSize,
-         precocity_kd = PrecocityAtBirth) %>% 
+kd <- kd %>%
+  select(
+    binomial = Species,
+    adult_body_mass_g = AdultBodyMass_g,
+    gestation_len_d = GestationLen_d,
+    age_at_eye_opening_d = AgeatEyeOpening_d,
+    litter_size = LitterSize,
+    precocity_kd = PrecocityAtBirth
+  ) %>%
   mutate(precocity_kd = str_to_lower(precocity_kd))
 ```
 
@@ -105,9 +119,11 @@ kd <- kd %>%
 First create a list of all binomials with their taxonomic information from both PanTHERIA and Myhrvold. 
 
 ```{r}
-spp <- bind_rows(myhrvold = select(mv, family, binomial),
-                 pantheria = select(pt, family, binomial), 
-                 .id = "source") %>% 
+spp <- bind_rows(
+  myhrvold = select(mv, family, binomial),
+  pantheria = select(pt, family, binomial),
+  .id = "source"
+) %>%
   arrange(binomial)
 ```
 
@@ -116,10 +132,12 @@ spp <- bind_rows(myhrvold = select(mv, family, binomial),
 If the family assignment between the datasets is the same for a given species, merge the information; if not, resolve the discordance. 
 
 ```{r}
-spp_wide <- spp %>% 
-  pivot_wider(id_cols = "binomial", 
-              names_from = "source", 
-              values_from = c("family"))
+spp_wide <- spp %>%
+  pivot_wider(
+    id_cols = "binomial",
+    names_from = "source",
+    values_from = c("family")
+  )
 ```
 
 For species that are present in only dataset, we will use the order and family information from whichever dataset they are present in. 
@@ -127,7 +145,7 @@ For species that are present in only dataset, we will use the order and family i
 For species that are present in both datasets, but the family information is discordant between the two datasets, we need to resolve the discordance. There are only 10 such species, below. 
 
 ```{r}
-spp_wide %>% 
+spp_wide %>%
   filter(!is.na(myhrvold) & !is.na(pantheria)) %>% # present in both
   filter(myhrvold != pantheria)
 ```
@@ -135,15 +153,17 @@ spp_wide %>%
 The discordance is actually due to a misspelling of Indriidae ("The Indriidae (sometimes incorrectly spelled Indridae) are a family of strepsirrhine primates." from https://en.wikipedia.org/wiki/Indriidae). We just need to correct this spelling to resolve all discordances. 
 
 ```{r}
-spp_wide <- spp_wide %>% 
-  mutate(myhrvold = str_replace(myhrvold, "Indridae", "Indriidae"),
-         pantheria = str_replace(pantheria, "Indridae", "Indriidae"))
+spp_wide <- spp_wide %>%
+  mutate(
+    myhrvold = str_replace(myhrvold, "Indridae", "Indriidae"),
+    pantheria = str_replace(pantheria, "Indridae", "Indriidae")
+  )
 ```
 
 Let's make sure that now we have no discordance. 
 
 ```{r}
-spp_wide %>% 
+spp_wide %>%
   filter(!is.na(myhrvold) & !is.na(pantheria)) %>% # present in both
   filter(myhrvold != pantheria)
 ```
@@ -153,8 +173,8 @@ spp_wide %>%
 Now that we have resolved the discordance, we will keep only one column for family by coalescing information from the two datasets. 
 
 ```{r}
-spp_resolved <- spp_wide %>% 
-  mutate(family = coalesce(pantheria, myhrvold)) %>% 
+spp_resolved <- spp_wide %>%
+  mutate(family = coalesce(pantheria, myhrvold)) %>%
   select(binomial, family)
 ```
 
@@ -169,8 +189,8 @@ filter(spp_resolved, is.na(rank07)) # no order information
 Only Nesophontidae faimly doesn't have any order information. We will get rid of it from the data. 
 
 ```{r}
-spp_resolved <- spp_resolved %>% 
-  filter(!is.na(rank07)) %>% 
+spp_resolved <- spp_resolved %>%
+  filter(!is.na(rank07)) %>%
   select(
     rank01,
     rank02,
@@ -228,22 +248,52 @@ count(spp_upham, in_tree = !is.na(binomial_upham19))
 
 We will now add the consolidated taxonomic information to all three trait datasets. 
 ```{r}
-pt <- pt %>% 
-  select(-family, -genus, -species) %>% 
-  inner_join(spp_resolved, by = "binomial") %>% 
-  relocate(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
-          family, binomial)
+pt <- pt %>%
+  select(-family, -genus, -species) %>%
+  inner_join(spp_resolved, by = "binomial") %>%
+  relocate(
+    rank01,
+    rank02,
+    rank03,
+    rank04,
+    rank05,
+    rank06,
+    rank07,
+    rank08,
+    family,
+    binomial
+  )
 
-mv <- mv %>% 
-  select(-family, -genus, -species) %>% 
-  inner_join(spp_resolved, by = "binomial") %>% 
-  relocate(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
-           family, binomial)
+mv <- mv %>%
+  select(-family, -genus, -species) %>%
+  inner_join(spp_resolved, by = "binomial") %>%
+  relocate(
+    rank01,
+    rank02,
+    rank03,
+    rank04,
+    rank05,
+    rank06,
+    rank07,
+    rank08,
+    family,
+    binomial
+  )
 
-kd <- kd %>% 
-  inner_join(spp_resolved, by = "binomial") %>% 
-  relocate(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
-           family, binomial)
+kd <- kd %>%
+  inner_join(spp_resolved, by = "binomial") %>%
+  relocate(
+    rank01,
+    rank02,
+    rank03,
+    rank04,
+    rank05,
+    rank06,
+    rank07,
+    rank08,
+    family,
+    binomial
+  )
 ```
 
 # Prune trait data to species in the trees

@@ -62,11 +62,11 @@ model_weights <- read_rds(here(resdir, "consensus/model-weights.rds"))
 # Calculate garbage model likelihood
 
 ```{r}
-prec %>% 
-  count(precocity) %>% 
-  mutate(prob = n/sum(n)) %>% 
-  mutate(lnL = n * log(prob)) %>% 
-  pull(lnL) %>% 
+prec %>%
+  count(precocity) %>%
+  mutate(prob = n / sum(n)) %>%
+  mutate(lnL = n * log(prob)) %>%
+  pull(lnL) %>%
   sum()
 ```
 
