@@ -21,6 +21,34 @@ prune_tree_for_fitmk <- function(.phy, .dat) {
 }
 
 # =============================================================================
+#' Multistart fitMk
+#'
+#' Start fitMk from multiple starting points to avoid local optimum. Returns the
+#'  best of .nstart fits from randomized starting values, which is more likely
+#'  to be the global optimum than a single-start fit."
+#'
+#' @param .phy tree
+#' @param .dat tipdata
+#' @param .model model to fit
+#' @param .nstart number of random starts
+#'
+#' @returns
+#' @export
+#'
+#' @examples
+fit_mk_multistart <- function(.phy, .dat, .model, .nstart = 12) {
+  fits <- map(seq_len(.nstart), function(i) {
+    fitMk(.phy, .dat, model = .model, pi = "estimated", rand_start = TRUE)
+  })
+  ll <- map_dbl(fits, function(f) f$logLik)
+
+  best <- fits[[which.max(ll)]]
+  attr(best, "multistart_logLik") <- ll
+  best
+}
+
+
+# =============================================================================
 
 #' Fit models
 #'
@@ -41,9 +69,9 @@ fit_models <- function(.phy, .dat) {
 
   # fit models
   message("    fitting models...")
-  fit_er <- fitMk(.phy, .dat_sorted, model = "ER", pi = "estimated")
-  fit_sym <- fitMk(.phy, .dat_sorted, model = "SYM", pi = "estimated")
-  fit_ard <- fitMk(.phy, .dat_sorted, model = "ARD", pi = "estimated")
+  fit_er <- fit_mk_multistart(.phy, .dat_sorted, .model = "ER")
+  fit_sym <- fit_mk_multistart(.phy, .dat_sorted, .model = "SYM")
+  fit_ard <- fit_mk_multistart(.phy, .dat_sorted, .model = "ARD")
 
   # model comparison
   message("    running model comparison...")
@@ -69,7 +97,7 @@ fit_single_model <- function(.phy, .dat, .model) {
   stopifnot(identical(names(.dat_sorted), .phy$tip.label))
 
   message("    fitting model...")
-  fit <- fitMk(.phy, .dat_sorted, model = .model, pi = "estimated")
+  fit <- fit_mk_multistart(.phy, .dat_sorted, .model = .model)
 
   return(fit)
 }

@@ -21,7 +21,7 @@ model_to_test <- "all"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
 mem_per_cpu <- "2G"
-time_limit <- "01:00:00"
+time_limit <- "06:00:00"
 
 resdir <- here("results/scm", analysis)
 fs::dir_create(resdir)
@@ -96,6 +96,9 @@ bash <- glue(
 #SBATCH --mail-user=arun.chavan@yale.edu
 
 module load R/4.4.1-foss-2022b
+
+# to fix slow renv startup
+export RENV_CONFIG_SANDBOX_ENABLED=FALSE
 
 cd {here()} # must start r session in project root dir to use renv
 

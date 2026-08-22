@@ -80,13 +80,13 @@ fs::dir_create(resdir)
 # run simmap ==================================================================
 ###############################################################################
 set.seed(seed)
-
 if (opt$model == "all") {
   fit <- fit_models(tr, tipdata)
 } else {
   fit <- fit_single_model(tr, tipdata, opt$model)
 }
 
+set.seed(seed)
 if (is_consensus) {
   message("Running simmap...")
   simmap <- run_simmap(fit, opt$nsim)
