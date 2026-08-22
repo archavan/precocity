@@ -44,6 +44,9 @@ mv <- read_csv(here("data/traits/Myhrvold/Amniote_Database_Aug_2015.csv"),
 
 # list of mammalian families 
 families <- read_csv(here("data/taxa/families.csv"))
+
+# curated synonyms mapping older binomials onto Upham 2019 tip labels
+synonyms <- read_csv(here("data/taxa/synonyms_upham2019.csv"))
 ```
 
 Keep relevant variables and clean up: 
@@ -168,10 +171,56 @@ Only Nesophontidae faimly doesn't have any order information. We will get rid of
 ```{r}
 spp_resolved <- spp_resolved %>% 
   filter(!is.na(rank07)) %>% 
-  select(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
-         family, binomial) %>% 
-  arrange(rank01, rank02, rank03, rank04, rank05, rank06, rank07, rank08,
-          family, binomial)
+  select(
+    rank01,
+    rank02,
+    rank03,
+    rank04,
+    rank05,
+    rank06,
+    rank07,
+    rank08,
+    family,
+    binomial
+  ) %>%
+  arrange(
+    rank01,
+    rank02,
+    rank03,
+    rank04,
+    rank05,
+    rank06,
+    rank07,
+    rank08,
+    family,
+    binomial
+  )
+```
+
+## Add the Upham 2019 tip label for each species
+
+The binomials above follow MSW3, which the trait datasets use. The Upham 2019 tree uses newer nomenclature for some species. We add the tip label as a new column
+
+```{r}
+spp_upham <- spp_resolved %>%
+  left_join(synonyms, by = c("binomial" = "binomial_synonym")) %>%
+  mutate(binomial_upham19 = coalesce(binomial_upham19, binomial)) %>%
+  mutate(
+    binomial_upham19 = ifelse(
+      binomial_upham19 %in% up19$binomial,
+      binomial_upham19,
+      NA_character_
+    )
+  ) %>%
+  select(-ref)
+
+# the map must not collapse two species onto one tip
+stopifnot(!any(duplicated(na.omit(spp_upham$binomial_upham19))))
+
+# every non-missing tip label must actually be in the tree
+stopifnot(all(na.omit(spp_upham$binomial_upham19) %in% up19$binomial))
+
+count(spp_upham, in_tree = !is.na(binomial_upham19))
 ```
 
 
@@ -228,7 +277,7 @@ write_csv(kd_dr12, here("data/02_pruned/mp-kd_dosReis2012.csv"))
 write_csv(kd_up19, here("data/02_pruned/mp-kd_upham2019.csv"))
 
 # taxonomic information
-write_csv(spp_resolved, here("data/taxa/species.csv"))
+write_csv(spp_upham, here("data/taxa/species.csv"))
 ```
 
 # Session Info
