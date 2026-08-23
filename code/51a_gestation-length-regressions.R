@@ -102,7 +102,7 @@ prec_vs_bm_residuals <- prec_data %>%
   ) +
   scale_fill_manual(values = clrs, guide = "none") +
   labs(y = "residuals") +
-  theme_bw(base_family = "Source Sans Pro") +
+  theme_bw(base_family = "Source Sans 3") +
   theme(
     panel.border = element_rect(linewidth = 0.5, fill = NA),
     panel.grid.major = element_blank(),
@@ -214,7 +214,7 @@ gl_vs_bm <- ggplot(
     y = 7,
     label = "log(gestation length) ~ log(adult body mass)",
     hjust = 0,
-    family = "Source Sans Pro"
+    family = "Source Sans 3"
   ) +
   # gl ~ bm + prec
   annotate(
@@ -247,13 +247,13 @@ gl_vs_bm <- ggplot(
     y = 6.75,
     label = "log(gestation length) ~ log(adult body mass) + precocity",
     hjust = 0,
-    family = "Source Sans Pro"
+    family = "Source Sans 3"
   ) +
   labs(
     x = "log(adult body mass in grams)",
     y = "log(gestation length in days)"
   ) +
-  theme_bw(base_family = "Source Sans Pro") +
+  theme_bw(base_family = "Source Sans 3") +
   theme(
     panel.border = element_rect(linewidth = 0.5, fill = NA),
     panel.grid.minor = element_blank(),
@@ -275,12 +275,13 @@ gl_vs_bm_with_residuals_inset <- gl_vs_bm +
     top = 0.3
   )
 
-ggsave(
-  here(resdir, "gl-vs-bm_residuals-inset.pdf"),
-  gl_vs_bm_with_residuals_inset,
-  device = cairo_pdf,
+quartz(
+  type = "pdf",
+  file = here(resdir, "gl-vs-bm_residual-inset.pdf"),
   width = 8,
   height = 6
 )
+print(gl_vs_bm_with_residuals_inset)
+dev.off()
 
 # end =========================================================================

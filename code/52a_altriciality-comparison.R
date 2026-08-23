@@ -20,6 +20,12 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
+quartzsave <- function(.filename, .plot, .width, .height, ...) {
+  quartz(type = "pdf", file = .filename, width = .width, height = .height)
+  print(.plot)
+  dev.off()
+}
+
 # data ========================================================================
 prec <- read_csv("data/03_coded/precocity.csv")
 pt <- read_csv("data/02_pruned/pantheria_upham2019.csv")
@@ -36,7 +42,7 @@ alt_comp <- ggplot(prec, aes(log10(bm_ratio), fill = precocity)) +
   facet_grid(rows = vars(rank03), scales = "free_y") +
   scale_fill_manual(values = clrs, name = NULL) +
   labs(x = "log<sub>10</sub>(neonate body mass ÷ adult body mass)") +
-  theme_bw(base_family = "Source Sans Pro") +
+  theme_bw(base_family = "Source Sans 3") +
   theme(
     panel.grid.minor = element_blank(),
     strip.background = element_blank(),
@@ -48,12 +54,11 @@ alt_comp <- ggplot(prec, aes(log10(bm_ratio), fill = precocity)) +
   )
 
 
-ggsave(
+quartzsave(
   here(resdir, "body-mass-ratio-distribution.pdf"),
   alt_comp,
   width = 5,
-  height = 6,
-  device = cairo_pdf
+  height = 6
 )
 
 # overlapping range of the metric of altriciality =============================
@@ -91,7 +96,7 @@ bm_scatter <- ggplot(
     x = 20000,
     y = 0.05,
     label = "Non-eutherian",
-    family = "Source Sans Pro",
+    family = "Source Sans 3",
     hjust = 1,
     vjust = 1
   ) +
@@ -106,7 +111,7 @@ bm_scatter <- ggplot(
     )
   ) +
   coord_fixed() +
-  theme_bw(base_family = "Source Sans Pro") +
+  theme_bw(base_family = "Source Sans 3") +
   theme(
     legend.position.inside = c(0.01, 0.99),
     legend.justification.inside = c(0, 1),
@@ -115,12 +120,11 @@ bm_scatter <- ggplot(
   )
 
 
-ggsave(
+quartzsave(
   here(resdir, "neonate-vs-adult-body-mass.pdf"),
-  plot = bm_scatter,
+  bm_scatter,
   width = 5.5,
-  height = 5,
-  device = cairo_pdf
+  height = 5
 )
 
 # by order ====================================================================
@@ -138,7 +142,7 @@ bm_ratio_by_order <- ggplot(prec, aes(log_bm_ratio, rank07, fill = precocity)) +
     x = "log<sub>10</sub>(neonate body mass ÷ adult body mass)",
     y = "Order"
   ) +
-  theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+  theme_bw(base_family = "Source Sans 3", base_line_size = 0.25) +
   theme(
     strip.clip = "off",
     strip.text.y = element_text(angle = 0, hjust = 0, size = 6),
@@ -154,12 +158,11 @@ bm_ratio_by_order <- ggplot(prec, aes(log_bm_ratio, rank07, fill = precocity)) +
     legend.key.size = unit(0.075, "in")
   )
 
-ggsave(
+quartzsave(
   here(resdir, "log-bm-ratio-by-order.pdf"),
   bm_ratio_by_order,
-  width = 3.1,
-  height = 3.1,
-  device = cairo_pdf
+  .width = 3.1,
+  .height = 3.1
 )
 
 # difference in medians =======================================================
