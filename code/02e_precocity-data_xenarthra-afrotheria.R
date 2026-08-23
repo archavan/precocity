@@ -16,15 +16,21 @@ library(tidyverse)
 library(here)
 library(glue)
 
-resdir <- here("data/03_coded/xen-afr")
+resdir <- here("data/03_coded/xenafr")
 fs::dir_create(resdir)
 
 ###############################################################################
 # data ========================================================================
 ###############################################################################
 
-prec <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
 spp <- read_csv(here("data/taxa/species.csv"))
+
+case78 <- read_csv(here("data/03_coded/case78/precocity_case78_v1.csv"))
+pantheria <- read_csv(here(
+  "data/03_coded/pantheria/precocity_pantheria_v1.csv"
+))
+
+already_coded <- union(case78$binomial, pantheria$binomial)
 
 ###############################################################################
 # species with no data ========================================================
@@ -32,7 +38,7 @@ spp <- read_csv(here("data/taxa/species.csv"))
 
 ## write species to be coded to file ==========================================
 to_code <- spp |>
-  filter(!binomial_upham19 %in% prec$binomial) |>
+  filter(!binomial_upham19 %in% already_coded) |>
   filter(rank05 %in% c("Xenarthra", "Afrotheria")) |>
   filter(!is.na(binomial_upham19))
 
@@ -50,25 +56,6 @@ stopifnot(all(with(coded, binomial == binomial_upham19)))
 # combine data ================================================================
 ###############################################################################
 
-full <- bind_rows(
-  prec,
-  select(coded, -source, -notes, -binomial_upham19)
-) |>
-  arrange(
-    rank01,
-    rank02,
-    rank03,
-    rank04,
-    rank05,
-    rank06,
-    rank07,
-    rank08,
-    family,
-    binomial
-  )
-
-stopifnot(all(full$binomial %in% spp$binomial_upham19))
-
-write_csv(full, here("data/03_coded/case78-plus-pantheria-plus-xenafr.csv"))
+write_csv(coded, here(resdir, "precocity_xenafr_v1.csv"))
 
 # end #########################################################################
