@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2026-08-21
+# Started: 2026-08-22
 
 ###############################################################################
 # setup =======================================================================
@@ -16,7 +16,7 @@ conflicts_prefer(purrr::map, dplyr::filter)
 source(here("code/utilities_scm.R"))
 
 ## parameters =================================================================
-analysis <- "case78-plus-pantheria"
+analysis <- "exclude-manual"
 model_to_test <- "all"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
@@ -36,8 +36,8 @@ fs::dir_create(logdir)
 ## tipdata ====================================================================
 
 prec <- read_csv(here("data/03_coded/precocity.csv"))
-prec <- prec |> filter(batch_used %in% c("case78", "pantheria"))
 prec <- prec |>
+  filter(coding_method != "manual") |>
   mutate(
     precocity = fct(precocity, c("altricial", "intermediate", "precocial"))
   )

@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2024-11-21
+# Started: 2026-08-23
 
 # background ==================================================================
 
@@ -21,7 +21,7 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
-analysis_name <- "case78-plus-pantheria"
+analysis_name <- "pantheria"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
@@ -49,8 +49,7 @@ asr$ace <- lapply(asr$treename, function(x) {
 })
 
 # taxonomic information =======================================================
-taxa <- read_csv(here("data/03_coded/precocity.csv")) |>
-  filter(batch_used %in% c("case78", "pantheria")) |>
+taxa <- read_csv(here("data/03_coded/pantheria/precocity_pantheria_v1.csv")) |>
   select(
     rank01,
     rank02,

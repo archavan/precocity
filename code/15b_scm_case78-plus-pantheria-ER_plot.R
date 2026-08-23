@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2024-02-09
+# Started: 2024-11-21
 
 # background ==================================================================
 
@@ -11,6 +11,9 @@ library(tidyverse)
 library(here)
 library(cowplot)
 library(fs)
+library(conflicted)
+
+conflicts_prefer(purrr::map, dplyr::filter)
 
 clrs <- c(
   altricial = '#fc8d59',
@@ -18,19 +21,11 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
-analysis_name <- "pantheria"
+analysis_name <- "case78-plus-pantheria-ER"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
-# tipdata
-prec_data <- read_csv(here(
-  "data/03_coded/pantheria/precocity_pantheria_v1.csv"
-))
-prec_data <- prec_data %>%
-  mutate(
-    precocity = fct(precocity, c("altricial", "intermediate", "precocial"))
-  )
-prec_tipdata <- set_names(prec_data$precocity, prec_data$binomial)
+prec_tipdata <- read_rds(here(resdir, "tipdata.rds"))
 
 # consensus results
 tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
@@ -40,19 +35,22 @@ simmap_summary_consensus <- read_rds(here(
 ))
 
 # results from sampled trees
-asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
-asr$tr_pruned <- lapply(asr$tr_name, \(x) {
+asr <- read_csv(here(resdir, "treeindices.csv")) |>
+  filter(treename != "consensus")
+
+asr$tr_pruned <- lapply(asr$treename, function(x) {
   read_rds(here(resdir, "sample", x, "tree_pruned.rds"))
 })
-asr$model_weights <- lapply(asr$tr_name, \(x) {
-  read_rds(here(resdir, "sample", x, "model-weights.rds"))
+asr$model_weights <- lapply(asr$treename, function(x) {
+  read_rds(here(resdir, "sample", x, "model-fit.rds"))
 })
-asr$ace <- lapply(asr$tr_name, \(x) {
+asr$ace <- lapply(asr$treename, function(x) {
   read_rds(here(resdir, "sample", x, "ace.rds"))
 })
 
 # taxonomic information =======================================================
-taxa <- prec_data %>%
+taxa <- read_csv(here("data/03_coded/precocity.csv")) |>
+  filter(batch_used %in% c("case78", "pantheria")) |>
   select(
     rank01,
     rank02,
@@ -72,7 +70,7 @@ taxa <- prec_data %>%
 
 # functions ===================================================================
 get_taxonomic_rank <- function(.taxon) {
-  tax_rank <- names(which(apply(taxa, 2, \(x) any(grepl(.taxon, x)))))
+  tax_rank <- names(which(apply(taxa, 2, function(x) any(grepl(.taxon, x)))))
   if (length(tax_rank) == 0) {
     stop("Taxon not found in data")
   }
@@ -97,9 +95,9 @@ get_classification <- function(.taxon) {
     shortpath <- ranks[seq_len(which(ranks == tax_rank))]
   }
 
-  taxonomy <- taxa %>%
-    select(all_of(shortpath)) %>%
-    filter(.data[[tax_rank]] == .taxon) %>%
+  taxonomy <- taxa |>
+    select(all_of(shortpath)) |>
+    filter(.data[[tax_rank]] == .taxon) |>
     distinct()
 
   stopifnot(nrow(taxonomy) == 1)
@@ -120,8 +118,8 @@ get_pp_df <- function(.taxon) {
   map2_df(asr$tr_pruned, asr$ace, function(x, y) {
     node <- get_node(x, .taxon)
     get_pp_at_node(y, node)
-  }) %>%
-    mutate(tree_id = 1:n()) %>%
+  }) |>
+    mutate(tree_id = 1:n()) |>
     relocate(tree_id)
 }
 
@@ -129,7 +127,7 @@ plot_pp <- function(
   .taxon,
   .title = .taxon
 ) {
-  df <- get_pp_df(.taxon) %>%
+  df <- get_pp_df(.taxon) |>
     pivot_longer(-tree_id, names_to = "precocity", values_to = "pp")
 
   ggplot(df, aes(tree_id, pp, fill = precocity)) +
@@ -142,7 +140,7 @@ plot_pp <- function(
       title = .title,
       caption = paste0(get_classification(.taxon), collapse = " → ")
     ) +
-    theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+    theme_bw(base_line_size = 0.25) +
     theme(
       axis.text.x = element_text(size = 5),
       axis.text.y = element_text(size = 5),
@@ -165,7 +163,7 @@ plot_and_save_pp_for_all_taxa_in_rank <- function(.rank) {
   x <- unique(taxa[[.rank]][!is.na(taxa[[.rank]])])
   names(x) <- x
   fs::dir_create(here(resdir, "plots/pp", .rank))
-  map(x, possibly(plot_pp)) %>%
+  map(x, possibly(plot_pp)) |>
     iwalk(
       ~ ggsave(
         filename = here(resdir, "plots/pp", .rank, paste0(.y, ".pdf")),
@@ -207,9 +205,8 @@ add_cladelab <- function(.taxon, ln.offset, lab.offset, ...) {
 
 cairo_pdf(
   here(resdir, "plots", "consensus_asr.pdf"),
-  width = 12,
-  height = 7,
-  family = "Source Sans Pro",
+  width = 15,
+  height = 9,
   pointsize = 14
 )
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
@@ -246,6 +243,8 @@ add_cladelab("Euarchontoglires", 1.1, 1.12)
 add_cladelab("Afrotheria", 1.02, 1.04)
 add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
+add_cladelab("Primates", 1.06, 1.08)
+add_cladelab("Artiodactyla", 1.06, 1.08)
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
 add_cladelab("Chiroptera", 1.06, 1.08)

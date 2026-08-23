@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2026-08-21
+# Started: 2026-08-22
 
 ###############################################################################
 # setup =======================================================================
@@ -11,13 +11,13 @@ library(glue)
 library(ape)
 library(conflicted)
 
-conflicts_prefer(purrr::map, dplyr::filter)
+conflicts_prefer(purrr::map)
 
 source(here("code/utilities_scm.R"))
 
 ## parameters =================================================================
-analysis <- "case78-plus-pantheria"
-model_to_test <- "all"
+analysis <- "main-ER"
+model_to_test <- "ER"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
 mem_per_cpu <- "2G"
@@ -36,7 +36,6 @@ fs::dir_create(logdir)
 ## tipdata ====================================================================
 
 prec <- read_csv(here("data/03_coded/precocity.csv"))
-prec <- prec |> filter(batch_used %in% c("case78", "pantheria"))
 prec <- prec |>
   mutate(
     precocity = fct(precocity, c("altricial", "intermediate", "precocial"))

@@ -16,8 +16,8 @@ conflicts_prefer(purrr::map, dplyr::filter)
 source(here("code/utilities_scm.R"))
 
 ## parameters =================================================================
-analysis <- "case78-plus-pantheria"
-model_to_test <- "all"
+analysis <- "case78-plus-pantheria-ER"
+model_to_test <- "ER"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
 mem_per_cpu <- "2G"

@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2026-08-21
+# Started: 2026-08-22
 
 ###############################################################################
 # setup =======================================================================
@@ -11,12 +11,12 @@ library(glue)
 library(ape)
 library(conflicted)
 
-conflicts_prefer(purrr::map, dplyr::filter)
+conflicts_prefer(purrr::map)
 
 source(here("code/utilities_scm.R"))
 
 ## parameters =================================================================
-analysis <- "case78-plus-pantheria"
+analysis <- "case78"
 model_to_test <- "all"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
@@ -35,8 +35,16 @@ fs::dir_create(logdir)
 
 ## tipdata ====================================================================
 
-prec <- read_csv(here("data/03_coded/precocity.csv"))
-prec <- prec |> filter(batch_used %in% c("case78", "pantheria"))
+prec <- read_csv(here("data/03_coded/case78/precocity_case78_v1.csv")) |>
+  mutate(
+    precocity = case_when(
+      precocity == "fetal" ~ "altricial",
+      precocity == "A" ~ "altricial",
+      precocity == "SA" ~ "altricial",
+      precocity == "SP" ~ "intermediate",
+      precocity == "P" ~ "precocial"
+    )
+  )
 prec <- prec |>
   mutate(
     precocity = fct(precocity, c("altricial", "intermediate", "precocial"))

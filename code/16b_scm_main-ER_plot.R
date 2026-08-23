@@ -1,5 +1,5 @@
 # Arun Chavan
-# Started: 2024-02-09
+# Started: 2026-08-23
 
 # background ==================================================================
 
@@ -18,31 +18,11 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
-analysis_name <- "case78"
+analysis_name <- "main-ER"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================
-# tip data
-prec_data <- read_csv(here("data/03_coded/case78/precocity_case78_v1.csv"))
-
-prec_data <- prec_data %>%
-  mutate(
-    precocity_recoded = case_when(
-      precocity == "fetal" ~ "altricial",
-      precocity == "A" ~ "altricial",
-      precocity == "SA" ~ "altricial",
-      precocity == "SP" ~ "intermediate",
-      precocity == "P" ~ "precocial"
-    )
-  ) %>%
-  mutate(
-    precocity_recoded = fct(
-      precocity_recoded,
-      c("altricial", "intermediate", "precocial")
-    )
-  )
-
-prec_tipdata <- set_names(prec_data$precocity_recoded, prec_data$binomial)
+prec_tipdata <- read_rds(here(resdir, "tipdata.rds"))
 
 # consensus results
 tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
@@ -52,19 +32,21 @@ simmap_summary_consensus <- read_rds(here(
 ))
 
 # results from sampled trees
-asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
-asr$tr_pruned <- lapply(asr$tr_name, \(x) {
+asr <- read_csv(here(resdir, "treeindices.csv")) |>
+  filter(treename != "consensus")
+
+asr$tr_pruned <- lapply(asr$treename, function(x) {
   read_rds(here(resdir, "sample", x, "tree_pruned.rds"))
 })
-asr$model_weights <- lapply(asr$tr_name, \(x) {
-  read_rds(here(resdir, "sample", x, "model-weights.rds"))
+asr$model_weights <- lapply(asr$treename, function(x) {
+  read_rds(here(resdir, "sample", x, "model-fit.rds"))
 })
-asr$ace <- lapply(asr$tr_name, \(x) {
+asr$ace <- lapply(asr$treename, function(x) {
   read_rds(here(resdir, "sample", x, "ace.rds"))
 })
 
 # taxonomic information =======================================================
-taxa <- prec_data %>%
+taxa <- read_csv(here("data/03_coded/precocity.csv")) |>
   select(
     rank01,
     rank02,
@@ -84,7 +66,7 @@ taxa <- prec_data %>%
 
 # functions ===================================================================
 get_taxonomic_rank <- function(.taxon) {
-  tax_rank <- names(which(apply(taxa, 2, \(x) any(grepl(.taxon, x)))))
+  tax_rank <- names(which(apply(taxa, 2, function(x) any(grepl(.taxon, x)))))
   if (length(tax_rank) == 0) {
     stop("Taxon not found in data")
   }
@@ -109,9 +91,9 @@ get_classification <- function(.taxon) {
     shortpath <- ranks[seq_len(which(ranks == tax_rank))]
   }
 
-  taxonomy <- taxa %>%
-    select(all_of(shortpath)) %>%
-    filter(.data[[tax_rank]] == .taxon) %>%
+  taxonomy <- taxa |>
+    select(all_of(shortpath)) |>
+    filter(.data[[tax_rank]] == .taxon) |>
     distinct()
 
   stopifnot(nrow(taxonomy) == 1)
@@ -132,8 +114,8 @@ get_pp_df <- function(.taxon) {
   map2_df(asr$tr_pruned, asr$ace, function(x, y) {
     node <- get_node(x, .taxon)
     get_pp_at_node(y, node)
-  }) %>%
-    mutate(tree_id = 1:n()) %>%
+  }) |>
+    mutate(tree_id = 1:n()) |>
     relocate(tree_id)
 }
 
@@ -141,7 +123,7 @@ plot_pp <- function(
   .taxon,
   .title = .taxon
 ) {
-  df <- get_pp_df(.taxon) %>%
+  df <- get_pp_df(.taxon) |>
     pivot_longer(-tree_id, names_to = "precocity", values_to = "pp")
 
   ggplot(df, aes(tree_id, pp, fill = precocity)) +
@@ -154,7 +136,7 @@ plot_pp <- function(
       title = .title,
       caption = paste0(get_classification(.taxon), collapse = " → ")
     ) +
-    theme_bw(base_family = "Source Sans Pro", base_line_size = 0.25) +
+    theme_bw(base_line_size = 0.25) +
     theme(
       axis.text.x = element_text(size = 5),
       axis.text.y = element_text(size = 5),
@@ -177,7 +159,7 @@ plot_and_save_pp_for_all_taxa_in_rank <- function(.rank) {
   x <- unique(taxa[[.rank]][!is.na(taxa[[.rank]])])
   names(x) <- x
   fs::dir_create(here(resdir, "plots/pp", .rank))
-  map(x, possibly(plot_pp)) %>%
+  map(x, possibly(plot_pp)) |>
     iwalk(
       ~ ggsave(
         filename = here(resdir, "plots/pp", .rank, paste0(.y, ".pdf")),
@@ -219,9 +201,8 @@ add_cladelab <- function(.taxon, ln.offset, lab.offset, ...) {
 
 cairo_pdf(
   here(resdir, "plots", "consensus_asr.pdf"),
-  width = 12,
-  height = 7,
-  family = "Source Sans Pro",
+  width = 15,
+  height = 9,
   pointsize = 14
 )
 par(oma = c(0, 1.5, 0, 1), xpd = NA)
@@ -251,13 +232,15 @@ legend(
 )
 
 add_cladelab("Metatheria", 1.02, 1.04, orientation = "horizontal")
-# add_cladelab("Prototheria", 1.02, 1.04, orientation = "horizontal")
+add_cladelab("Prototheria", 1.02, 1.04, orientation = "horizontal")
 # infraclass
 add_cladelab("Laurasiatheria", 1.1, 1.12)
 add_cladelab("Euarchontoglires", 1.1, 1.12)
 add_cladelab("Afrotheria", 1.02, 1.04)
-# add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
+add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
+add_cladelab("Primates", 1.06, 1.08)
+add_cladelab("Artiodactyla", 1.06, 1.08)
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
 add_cladelab("Chiroptera", 1.06, 1.08)
@@ -279,16 +262,22 @@ arc.cladelabels(
   cex = 0.5,
   mark.node = FALSE
 )
-# arc.cladelabels(tr_consensus,
-#                 text = "Eulipotyphla",
-#                 node = getMRCA(tr_consensus,
-#                                c(get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
-#                                  get_species_in_taxon("Erinaceidae"))),
-# ln.offset = 1.06,
-# lab.offset = 1.08,
-# stretch = 1,
-# cex = 0.5,
-# mark.node = FALSE)
+arc.cladelabels(
+  tr_consensus,
+  text = "Eulipotyphla",
+  node = getMRCA(
+    tr_consensus,
+    c(
+      get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
+      get_species_in_taxon("Erinaceidae")
+    )
+  ),
+  ln.offset = 1.06,
+  lab.offset = 1.08,
+  stretch = 1,
+  cex = 0.5,
+  mark.node = FALSE
+)
 arc.cladelabels(
   tr_consensus,
   text = "Herpestoidea",
@@ -304,7 +293,7 @@ arc.cladelabels(
 )
 
 # families
-#add_cladelab("Felidae", 1.02, 1.04)
+add_cladelab("Felidae", 1.02, 1.04)
 add_cladelab("Canidae", 1.02, 1.04)
 add_cladelab("Ursidae", 1.02, 1.04)
 add_cladelab("Mustelidae", 1.02, 1.04)
