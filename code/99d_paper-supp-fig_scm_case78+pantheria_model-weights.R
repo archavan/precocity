@@ -12,7 +12,7 @@ resdir <- here("results/scm", analysis_name)
 figdir <- here("results/99_paper-figs")
 
 # data ========================================================================
-prec_data <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
+prec_data <- read_csv(here("data/03_coded/precocity.csv"))
 
 # consensus results
 mw_consensus <- read_rds(here(resdir, "consensus/model-weights.rds"))

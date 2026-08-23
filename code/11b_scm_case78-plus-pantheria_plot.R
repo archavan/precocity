@@ -46,7 +46,8 @@ asr$ace <- lapply(asr$treename, function(x) {
 })
 
 # taxonomic information =======================================================
-taxa <- read_csv(here("data/03_coded/case78-plus-pantheria.csv")) |>
+taxa <- read_csv(here("data/03_coded/precocity.csv")) |>
+  filter(batch_used %in% c("case78", "pantheria")) |>
   select(
     rank01,
     rank02,

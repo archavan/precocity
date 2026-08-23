@@ -35,7 +35,7 @@ fs::dir_create(logdir)
 
 ## tipdata ====================================================================
 
-prec <- read_csv(here("data/03_coded/case78-plus-pantheria-plus-xenafr.csv"))
+prec <- read_csv(here("data/03_coded/precocity.csv"))
 prec <- prec |>
   mutate(
     precocity = fct(precocity, c("altricial", "intermediate", "precocial"))

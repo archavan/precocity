@@ -28,7 +28,7 @@ geom_pt_size <- 1.25
 use_font <- "Source Sans Pro"
 
 # data ========================================================================
-prec <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
+prec <- read_csv(here("data/03_coded/precocity.csv"))
 pt <- read_csv(here("data/02_pruned/pantheria_upham2019.csv"))
 tr_consensus_full <- read.nexus(here(
   "data/trees/upham2019/consensus/DNA-only/consensus_full_with-binomial-tiplabels.tree"

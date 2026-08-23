@@ -21,7 +21,7 @@ clrs <- c(
 )
 
 # data ========================================================================
-prec <- read_csv("data/03_coded/case78-plus-pantheria.csv")
+prec <- read_csv("data/03_coded/precocity.csv")
 pt <- read_csv("data/02_pruned/pantheria_upham2019.csv")
 
 prec <- left_join(prec, pt)

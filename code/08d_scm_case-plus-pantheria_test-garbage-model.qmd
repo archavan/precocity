@@ -55,7 +55,7 @@ resdir <- here("results/scm", analysis_name)
 #| message: false
 #| warning: false
 
-prec <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
+prec <- read_csv(here("data/03_coded/precocity.csv"))
 model_weights <- read_rds(here(resdir, "consensus/model-weights.rds"))
 ```
 

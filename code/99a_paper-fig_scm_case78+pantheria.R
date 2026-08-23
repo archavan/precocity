@@ -25,7 +25,7 @@ figdir <- here("results/99_paper-figs")
 
 # data ========================================================================
 # tipdata
-prec_data <- read_csv(here("data/03_coded/case78-plus-pantheria.csv"))
+prec_data <- read_csv(here("data/03_coded/precocity.csv"))
 prec_data <- prec_data %>%
   mutate(
     precocity = fct(precocity, c("altricial", "intermediate", "precocial"))
