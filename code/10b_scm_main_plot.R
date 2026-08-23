@@ -18,7 +18,7 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
-analysis_name <- "case78-plus-pantheria-plus-xenafr"
+analysis_name <- "main"
 resdir <- here("results/scm", analysis_name)
 
 # data ========================================================================

@@ -16,7 +16,7 @@ conflicts_prefer(purrr::map)
 source(here("code/utilities_scm.R"))
 
 ## parameters =================================================================
-analysis <- "case78-plus-pantheria-plus-xenafr"
+analysis <- "main"
 model_to_test <- "all"
 nsim <- 1000
 partition <- "pi_medzhitov,day"
