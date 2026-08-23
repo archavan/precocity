@@ -233,7 +233,7 @@ plot_asr_results <- function() {
   add_cladelab("Xenarthra", 1.1, 1.12, text = "Xen.")
   # orders
   add_cladelab("Primates", 1.06, 1.08)
-  add_cladelab("Cetartiodactyla", 1.06, 1.08)
+  add_cladelab("Artiodactyla", 1.06, 1.08)
   add_cladelab("Rodentia", 1.06, 1.08)
   add_cladelab("Carnivora", 1.06, 1.08)
   add_cladelab("Chiroptera", 1.06, 1.08)

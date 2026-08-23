@@ -117,9 +117,9 @@ unique(clades$rank07[which(!is.na(clades$rank07))]) %>%
   map_chr(possibly(get_taxonomic_rank, NA_character_)) %>%
   is.na() %>%
   which()
-#> Eulipotyphla and Cetartiodactyla
+#> Eulipotyphla
 
-# We need to manually add families for Eulipotyphla and Catardtiodactyla
+# We need to manually add families for Eulipotyphla
 clades$family[[which(clades$rank07 == "Eulipotyphla")]] <- c(
   "Erinaceidae",
   "Soricidae",
@@ -127,7 +127,9 @@ clades$family[[which(clades$rank07 == "Eulipotyphla")]] <- c(
   "Solenodontidae"
 )
 
-clades$family[[which(clades$rank07 == "Cetartiodactyla")]] <- c(
+# MSW3 has Artiodactyla and Cetacea as separate orders. Modern Artiodactyla
+# includes Cetacea, so add the cetacean families to it manually.
+clades$family[[which(clades$rank07 == "Artiodactyla")]] <- c(
   get_families("Artiodactyla"),
   get_families("Cetacea")
 )
@@ -148,7 +150,7 @@ families <- unnest_longer(clades, family)
 
 # check that we have all families =============================================
 
-# We have almost all families covered now. Except for Neophontidae but now sure
+# We have almost all families covered now. Except for Neophontidae but not sure
 # about its status
 anti_join(msw, families, by = "family")
 #> # A tibble: 1 × 5

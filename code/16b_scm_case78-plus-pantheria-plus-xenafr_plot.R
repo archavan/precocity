@@ -240,7 +240,7 @@ add_cladelab("Afrotheria", 1.02, 1.04)
 add_cladelab("Xenarthra", 1.02, 1.04, orientation = "horizontal")
 # orders
 add_cladelab("Primates", 1.06, 1.08)
-add_cladelab("Cetartiodactyla", 1.06, 1.08)
+add_cladelab("Artiodactyla", 1.06, 1.08)
 add_cladelab("Rodentia", 1.06, 1.08)
 add_cladelab("Carnivora", 1.06, 1.08)
 add_cladelab("Chiroptera", 1.06, 1.08)
