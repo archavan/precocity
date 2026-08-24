@@ -86,6 +86,7 @@ fit_models <- function(.phy, .dat) {
 #'
 #' @param .phy tree
 #' @param .dat tip data as a named vector where names are tip labels in tree
+#' @param .model either one of ER, SYM, ARD, or a custom model as a matrix
 #'
 #' @return results of `fitMK()`
 #' @export

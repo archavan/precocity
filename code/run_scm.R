@@ -40,7 +40,12 @@ parser <- OptionParser() |>
     type = "integer",
     required = TRUE
   ) |>
-  add_option("--model", default = "all", help = "ER, SYM, ARD, or all") |>
+  add_option(
+    "--model",
+    default = "all",
+    help = "ER, SYM, ARD, all, or custom"
+  ) |>
+  add_option("--custommodel", help = "Path to matrix stored as .rds") |>
   add_option(
     "--nsim",
     default = 1000,
@@ -49,7 +54,14 @@ parser <- OptionParser() |>
   )
 
 opt <- parse_args(parser)
-stopifnot(opt$model %in% c("all", "ER", "SYM", "ARD"))
+
+stopifnot(opt$model %in% c("all", "ER", "SYM", "ARD", "custom"))
+if (opt$model == "custom") {
+  stopifnot(!is.null(opt$custommodel))
+  model_spec <- read_rds(opt$custommodel)
+} else {
+  model_spec <- opt$model
+}
 
 ## data and derived options ===================================================
 seed <- opt$treeindex
@@ -83,7 +95,7 @@ set.seed(seed)
 if (opt$model == "all") {
   fit <- fit_models(tr, tipdata)
 } else {
-  fit <- fit_single_model(tr, tipdata, opt$model)
+  fit <- fit_single_model(tr, tipdata, model_spec)
 }
 
 set.seed(seed)
