@@ -112,4 +112,7 @@ for (i in c("Eutheria", "Theria", "Boreoeutheria")) {
   )
 }
 
+# remove auto-saved full simmap summary. too large.
+walk(orders, ~ unlink(here(resdir, .x, "consensus/simmap_summary.rds")))
+
 # end #########################################################################
