@@ -55,7 +55,36 @@ df <- df |>
   mutate(taxa = map(leave_out, ~ read_csv(here(resdir, .x, "taxa.csv")))) |>
   mutate(
     ace = map(leave_out, ~ read_rds(here(resdir, .x, "consensus", "ace.rds")))
+  ) |>
+  mutate(
+    model_fit = map(
+      leave_out,
+      ~ read_rds(here(resdir, .x, "consensus", "model-fit.rds"))
+    )
   )
+
+
+extract_model_fit <- function(.model_fit) {
+  mnames <- attr(.model_fit, "row.names")
+  mm <- attr(.model_fit, "models")
+  mm <- set_names(mm, mnames)
+  get_q_matrix <- function(.mod) {
+    matrix(
+      .mod$rates[.mod$index.matrix],
+      nrow = 3,
+      ncol = 3,
+      dimnames = list(.mod$states, .mod$states)
+    )
+  }
+  qmat <- map(mm, get_q_matrix)
+  pi <- map(mm, ~ .x$pi)
+  logLik <- map_dbl(mm, ~ .x$logLik)
+  list(qmat = qmat, pi = pi, logLik = logLik)
+}
+
+df <- df |>
+  mutate(model_fit_extracted = map(model_fit, extract_model_fit)) |>
+  unnest_wider(col = model_fit_extracted)
 
 ###############################################################################
 # plot PP at crown major node ==============================================
@@ -128,5 +157,10 @@ for (i in c("Eutheria", "Theria", "Boreoeutheria")) {
 
 # remove auto-saved full simmap summary. too large.
 walk(df$leave_out, ~ unlink(here(resdir, .x, "consensus/simmap_summary.rds")))
+
+# write extracted model details to file
+df |>
+  select(-tipdata, -tree, -taxa, -ace, -model_fit) |>
+  write_rds(here(resdir, "extracted-model-fits.rds"), compress = "gz")
 
 # end #########################################################################

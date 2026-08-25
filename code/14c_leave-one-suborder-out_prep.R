@@ -69,7 +69,9 @@ suborders <- unique(na.omit(prec_data$rank08))
 df <- tibble(leave_out = suborders)
 
 df <- df |>
-  mutate(prec = map(leave_out, ~ filter(prec_data, rank08 != .x))) |>
+  mutate(
+    prec = map(leave_out, ~ prec_data |> filter(!(rank08 %in% .x))) # this keeps rows with NA
+  ) |>
   mutate(tipdata = map(prec, ~ set_names(.x$precocity, .x$binomial))) |>
   mutate(tr_pruned = map(tipdata, ~ prune_tree_for_fitmk(tr, .x))) |>
   mutate(
@@ -81,6 +83,13 @@ df <- df |>
       return(x)
     })
   )
+
+for (i in seq_len(nrow(df))) {
+  stopifnot(
+    nrow(df$prec[[i]]) ==
+      nrow(prec_data) - sum(prec_data$rank08 == df$leave_out[[i]], na.rm = TRUE)
+  )
+}
 
 for (i in seq_len(nrow(df))) {
   fs::dir_create(here(resdir, df$leave_out[[i]]))
