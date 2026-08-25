@@ -77,6 +77,12 @@ treename <- names(treelist)[opt$treeindex]
 is_consensus <- treename == "consensus"
 
 tr <- treelist[[treename]]
+
+# Prune to the tips we have data for, so that a batch of analyses on different
+# subsets of taxa can share one treelist. Has no effect if the tree is already
+# pruned.
+tr <- prune_tree_for_fitmk(tr, tipdata)
+
 tipdata <- tipdata[tr$tip.label]
 stopifnot(identical(tr$tip.label, names(tipdata)))
 
