@@ -94,7 +94,7 @@ get_pp_at_node <- function(.ace, .node) .ace[which(rownames(.ace) == .node), ]
 
 get_pp_for_clades <- function(.ace, .phy, .taxa, .clades = focal_clades) {
   map(
-    set_names(focal_clades),
+    set_names(.clades),
     ~ get_pp_at_node(.ace, get_node(.phy, .x, .taxa))
   ) |>
     bind_rows(.id = "clade")
