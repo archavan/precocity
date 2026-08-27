@@ -25,7 +25,7 @@ text_size_max <- 7
 text_size_tag <- 8
 segment_linewidth <- 0.25
 geom_pt_size <- 1.25
-use_font <- "Source Sans Pro"
+use_font <- "Source Sans 3"
 
 # data ========================================================================
 prec <- read_csv(here("data/03_coded/precocity.csv"))
@@ -401,7 +401,7 @@ bm_only_pgls <- ggplot(
 residual_histogram <- prec_data %>%
   mutate(bm_residuals = pgls_consensus_bm$residuals) %>%
   ggplot(aes(bm_residuals, fill = precocity)) +
-  geom_histogram(bins = 50, color = "black", size = 0.25) +
+  geom_histogram(bins = 50, color = "black", linewidth = 0.25) +
   scale_fill_manual(
     values = clrs,
     guide = guide_legend(override.aes = list(size = 2.5), position = "inside")
@@ -437,12 +437,13 @@ ggsave(
   dpi = 600
 )
 
-ggsave(
-  here(resdir, "supp-fig_pgls_v2.pdf"),
-  plot = bm_only_patch,
-  device = cairo_pdf,
+quartz(
+  type = "pdf",
+  file = here(resdir, "supp-fig_pgls_v2.pdf"),
   width = 6.5,
   height = 3
 )
+print(bm_only_patch)
+dev.off()
 
 ###############################################################################
