@@ -1,16 +1,16 @@
 # Arun Chavan
 # Started: 2026-08-23
 
-# background ==================================================================
-
-# Process the simmap output and plot the results.
-
+###############################################################################
 # setup =======================================================================
+###############################################################################
+
 library(phytools)
 library(tidyverse)
 library(here)
-library(cowplot)
-library(fs)
+library(conflicted)
+
+conflicts_prefer(dplyr::filter, purrr::map)
 
 clrs <- c(
   altricial = '#fc8d59',
@@ -21,112 +21,140 @@ clrs <- c(
 analysis_name <- "main-ordered-ARD"
 resdir <- here("results/scm", analysis_name)
 
+source(here("code/utilities_taxonomic.R"))
+
+###############################################################################
 # data ========================================================================
-prec_tipdata <- read_rds(here(resdir, "tipdata.rds"))
+###############################################################################
+
+# taxonomic information
+spp <- read_csv(here("data/taxa/species.csv")) |>
+  select(-binomial) |>
+  rename(binomial = binomial_upham19)
+tipdata <- read_rds(here(resdir, "tipdata.rds"))
+taxa <- spp |> filter(binomial %in% names(tipdata))
+stopifnot(setequal(taxa$binomial, names(tipdata)))
 
 # consensus results
-tr_consensus <- read_rds(here(resdir, "consensus/tree_pruned.rds"))
 simmap_summary_consensus <- read_rds(here(
   resdir,
   "consensus/simmap_summary.rds"
 ))
 
-# results from sampled trees
-asr <- read_csv(here(resdir, "treeindices.csv")) |>
-  filter(treename != "consensus")
+# results from all trees including consensus
+asr <- read_csv(here(resdir, "treeindices.csv"))
+asr <- asr |>
+  mutate(treetype = ifelse(treename == "consensus", "consensus", "sample")) |>
+  mutate(
+    respath = ifelse(
+      treetype == "consensus",
+      "consensus",
+      paste0("sample/", treename)
+    )
+  ) |>
+  mutate(tr = map(respath, ~ read_rds(here(resdir, .x, "tree_pruned.rds")))) |>
+  mutate(fit = map(respath, ~ read_rds(here(resdir, .x, "model-fit.rds")))) |>
+  mutate(ace = map(respath, ~ read_rds(here(resdir, .x, "ace.rds"))))
 
-asr$tr_pruned <- lapply(asr$treename, function(x) {
-  read_rds(here(resdir, "sample", x, "tree_pruned.rds"))
-})
-asr$model_weights <- lapply(asr$treename, function(x) {
-  read_rds(here(resdir, "sample", x, "model-fit.rds"))
-})
-asr$ace <- lapply(asr$treename, function(x) {
-  read_rds(here(resdir, "sample", x, "ace.rds"))
-})
+###############################################################################
+# transition rates ============================================================
+###############################################################################
+# this analysis fits a single model rather than a set of models
+model_name <- "ordered ARD"
 
-# taxonomic information =======================================================
-taxa <- read_csv(here("data/03_coded/precocity.csv")) |>
-  select(
-    rank01,
-    rank02,
-    rank03,
-    rank04,
-    rank05,
-    rank06,
-    rank07,
-    rank08,
-    family,
-    binomial
+get_qmatrices <- function(.fit) {
+  set_names(list(as.Qmatrix(.fit)), model_name)
+}
+
+qtibbles <- function(.qmatlist) {
+  qtib1 <- function(.qmat) {
+    expand_grid(from = dimnames(.qmat)[[1]], to = dimnames(.qmat)[[2]]) |>
+      filter(from != to) |>
+      mutate(transition = paste0(from, " → ", to)) |>
+      mutate(rate = map2_dbl(from, to, ~ .qmat[.x, .y]))
+  }
+  .qmatlist |>
+    map(qtib1) |>
+    bind_rows(.id = "model")
+}
+
+asr <- asr |>
+  mutate(rates = map(fit, ~ get_qmatrices(.x) |> qtibbles()))
+
+qrates <- asr |>
+  select(treeindex, treename, treetype, rates) |>
+  unnest(col = rates)
+
+p_qrates <- qrates |>
+  filter(treetype != "consensus") |>
+  ggplot(aes(rate, transition, fill = model)) +
+  geom_violin(
+    scale = "width",
+    position = position_dodge(width = 0.65),
+    linewidth = 0.25
+  ) +
+  scale_y_discrete(labels = str_to_title, name = "Transition") +
+  scale_x_continuous(name = "Rate") +
+  scale_fill_discrete(name = "Model") +
+  theme_classic() +
+  theme(
+    panel.grid.major = element_line(linewidth = 0.2, color = "grey"),
+    panel.heights = unit(2.5, "in")
   )
+
+quartz(
+  type = "pdf",
+  file = here(resdir, "fitted-rates.pdf"),
+  width = 6,
+  height = 3
+)
+print(p_qrates)
+dev.off()
+
+write_csv(qrates, here(resdir, "fitted-rates.csv"))
 
 ###############################################################################
 # posterior probability distributions #########################################
 ###############################################################################
 
-# functions ===================================================================
-get_taxonomic_rank <- function(.taxon) {
-  tax_rank <- names(which(apply(taxa, 2, function(x) any(grepl(.taxon, x)))))
-  if (length(tax_rank) == 0) {
-    stop("Taxon not found in data")
-  }
-  message(paste0(.taxon, " was found in the taxonomic rank: ", tax_rank))
-  return(tax_rank)
-}
+## get monophyletic groups for which to plot pp distributions =================
+# should be monophyletic in all trees.
+monophyletic <- get_monophyletic_taxa(taxa, asr$tr)
 
-get_species_in_taxon <- function(.taxon) {
-  tax_rank <- get_taxonomic_rank(.taxon)
-  taxa$binomial[which(taxa[[tax_rank]] == .taxon)]
-}
-
-get_classification <- function(.taxon) {
-  ranks <- c("rank03", "rank05", "rank06", "rank07", "rank08", "family")
-  tax_rank <- get_taxonomic_rank(.taxon)
-  col_index <- which(names(taxa) == tax_rank)
-
-  # if the rank is low, we want to start from infraclass to keep things short
-  if (tax_rank %in% c("rank01", "rank02", "rank03")) {
-    shortpath <- tax_rank
-  } else {
-    shortpath <- ranks[seq_len(which(ranks == tax_rank))]
-  }
-
-  taxonomy <- taxa |>
-    select(all_of(shortpath)) |>
-    filter(.data[[tax_rank]] == .taxon) |>
-    distinct()
-
-  stopifnot(nrow(taxonomy) == 1)
-
-  x <- unlist(taxonomy)
-  x <- x[!is.na(x)]
-  return(x)
-}
-
-get_node <- function(.phy, .taxon) {
-  spp_list <- get_species_in_taxon(.taxon)
-  getMRCA(.phy, spp_list)
-}
-
+## extract PP values ==========================================================
 get_pp_at_node <- function(.ace, .node) .ace[which(rownames(.ace) == .node), ]
 
-get_pp_df <- function(.taxon) {
-  map2_df(asr$tr_pruned, asr$ace, function(x, y) {
-    node <- get_node(x, .taxon)
-    get_pp_at_node(y, node)
-  }) |>
-    mutate(tree_id = 1:n()) |>
-    relocate(tree_id)
+get_pp_for_clades <- function(.ace, .phy, .taxa, .clades) {
+  map(
+    set_names(.clades),
+    ~ get_pp_at_node(.ace, get_node(.phy, .x, .taxa))
+  ) |>
+    bind_rows(.id = "clade")
 }
 
-plot_pp <- function(
+asr <- asr |>
+  mutate(pp = map2(ace, tr, ~ get_pp_for_clades(.x, .y, taxa, monophyletic)))
+
+pp_monophyletic <- asr |>
+  select(treeindex, treename, treetype, pp) |>
+  unnest(col = pp)
+
+## write ======================================================================
+write_csv(pp_monophyletic, here(resdir, "posterior-prob.csv"))
+
+## plot =======================================================================
+
+plot_pp_dist <- function(
   .taxon,
   .title = .taxon
 ) {
-  df <- get_pp_df(.taxon) |>
-    pivot_longer(-tree_id, names_to = "precocity", values_to = "pp")
+  df <- pp_monophyletic |>
+    filter(treetype != "consensus") |>
+    filter(clade == .taxon) |>
+    select(treeindex, all_of(levels(tipdata))) |>
+    pivot_longer(-treeindex, names_to = "precocity", values_to = "pp")
 
-  ggplot(df, aes(tree_id, pp, fill = precocity)) +
+  ggplot(df, aes(treeindex, pp, fill = precocity)) +
     geom_col(width = 0.9, linewidth = 0) +
     scale_fill_manual(values = clrs) +
     scale_x_discrete(breaks = c(1, 25, 50, 75, 100), expand = c(0.04, 0.5)) +
@@ -134,7 +162,7 @@ plot_pp <- function(
       y = "Posterior probability",
       x = "Sampled tree",
       title = .title,
-      caption = paste0(get_classification(.taxon), collapse = " → ")
+      caption = paste0(get_classification(.taxon, taxa), collapse = " → ")
     ) +
     theme_bw(base_line_size = 0.25) +
     theme(
@@ -154,42 +182,27 @@ plot_pp <- function(
     )
 }
 
-# plot ========================================================================
-plot_and_save_pp_for_all_taxa_in_rank <- function(.rank) {
-  x <- unique(taxa[[.rank]][!is.na(taxa[[.rank]])])
-  names(x) <- x
-  fs::dir_create(here(resdir, "plots/pp", .rank))
-  map(x, possibly(plot_pp)) |>
-    iwalk(
-      ~ ggsave(
-        filename = here(resdir, "plots/pp", .rank, paste0(.y, ".pdf")),
-        plot = .x,
-        width = 2.75,
-        height = 1.75,
-        device = cairo_pdf
-      )
-    )
-}
 
-plot_and_save_pp_for_all_taxa_in_rank("rank01")
-plot_and_save_pp_for_all_taxa_in_rank("rank02")
-plot_and_save_pp_for_all_taxa_in_rank("rank03")
-plot_and_save_pp_for_all_taxa_in_rank("rank04")
-plot_and_save_pp_for_all_taxa_in_rank("rank05")
-plot_and_save_pp_for_all_taxa_in_rank("rank06")
-plot_and_save_pp_for_all_taxa_in_rank("rank07")
-plot_and_save_pp_for_all_taxa_in_rank("rank08")
-plot_and_save_pp_for_all_taxa_in_rank("family")
+quartz(
+  type = "pdf",
+  file = here(resdir, "pp-distribution.pdf"),
+  width = 3,
+  height = 2
+)
+walk(monophyletic, possibly(function(x) print(plot_pp_dist(x)), quiet = FALSE))
+dev.off()
+
 
 ###############################################################################
 # ancestral states on the consensus phylogeny #################################
 ###############################################################################
+tr_consensus <- asr$tr[[which(asr$treetype == "consensus")]]
 
 add_cladelab <- function(.taxon, ln.offset, lab.offset, ...) {
-  stopifnot(length(get_species_in_taxon(.taxon)) > 1)
+  stopifnot(length(get_species_in_taxon(.taxon, taxa)) > 1)
   arc.cladelabels(
     text = .taxon,
-    node = get_node(tr_consensus, .taxon),
+    node = get_node(tr_consensus, .taxon, taxa),
     stretch = 1,
     cex = 0.5,
     mark.node = FALSE,
@@ -199,8 +212,9 @@ add_cladelab <- function(.taxon, ln.offset, lab.offset, ...) {
   )
 }
 
-cairo_pdf(
-  here(resdir, "plots", "consensus_asr.pdf"),
+quartz(
+  type = "pdf",
+  file = here(resdir, "consensus_asr.pdf"),
   width = 15,
   height = 9,
   pointsize = 14
@@ -223,10 +237,10 @@ legend(
   y = max(pp$y.lim),
   xjust = 0,
   yjust = 1,
-  levels(prec_tipdata),
+  levels(tipdata),
   pch = 21,
   pt.cex = 1,
-  pt.bg = clrs,
+  pt.bg = clrs[levels(tipdata)],
   bty = "n",
   cex = 0.6
 )
@@ -251,9 +265,9 @@ arc.cladelabels(
   node = getMRCA(
     tr_consensus,
     c(
-      get_species_in_taxon("Odobenidae"),
-      get_species_in_taxon("Otariidae"),
-      get_species_in_taxon("Phocidae")
+      get_species_in_taxon("Odobenidae", taxa),
+      get_species_in_taxon("Otariidae", taxa),
+      get_species_in_taxon("Phocidae", taxa)
     )
   ),
   ln.offset = 1.02,
@@ -268,8 +282,9 @@ arc.cladelabels(
   node = getMRCA(
     tr_consensus,
     c(
-      get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
-      get_species_in_taxon("Erinaceidae")
+      get_species_in_taxon("Soricidae", taxa),
+      get_species_in_taxon("Erinaceidae", taxa)
+      # Solenodontidae, Talpidae not in data
     )
   ),
   ln.offset = 1.06,
@@ -283,7 +298,11 @@ arc.cladelabels(
   text = "Herpestoidea",
   node = getMRCA(
     tr_consensus,
-    c(get_species_in_taxon("Herpestidae"), get_species_in_taxon("Hyaenidae"))
+    c(
+      get_species_in_taxon("Eupleridae", taxa),
+      get_species_in_taxon("Herpestidae", taxa),
+      get_species_in_taxon("Hyaenidae", taxa)
+    )
   ),
   ln.offset = 1.02,
   lab.offset = 1.04,
@@ -307,14 +326,17 @@ arc.cladelabels(
   node = getMRCA(
     tr_consensus,
     c(
-      get_species_in_taxon("Caviidae"),
-      get_species_in_taxon("Cuniculidae"),
-      get_species_in_taxon("Ctenomyidae"),
-      get_species_in_taxon("Dasyproctidae"),
-      get_species_in_taxon("Chinchillidae"),
-      get_species_in_taxon("Erethizontidae"),
-      get_species_in_taxon("Echimyidae"),
-      get_species_in_taxon("Octodontidae")
+      get_species_in_taxon("Erethizontidae", taxa),
+      get_species_in_taxon("Caviidae", taxa),
+      get_species_in_taxon("Cuniculidae", taxa),
+      get_species_in_taxon("Dasyproctidae", taxa),
+      get_species_in_taxon("Dinomyidae", taxa),
+      get_species_in_taxon("Ctenomyidae", taxa),
+      get_species_in_taxon("Echimyidae", taxa),
+      get_species_in_taxon("Octodontidae", taxa),
+      get_species_in_taxon("Chinchillidae", taxa),
+      get_species_in_taxon("Capromyidae", taxa),
+      get_species_in_taxon("Myocastoridae", taxa) # Abrocomidae not in data
     )
   ),
   ln.offset = 1.02,
