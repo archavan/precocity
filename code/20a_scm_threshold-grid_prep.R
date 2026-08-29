@@ -173,11 +173,9 @@ taxonsets <- tibble(taxonset = grid$cell, trait_data = cell_data) |>
 all_binomials <- reduce(map(cell_data, "binomial"), union)
 union_trait_data <- precocity |>
   filter(binomial %in% all_binomials) |>
-  select(binomial) |>
-  left_join(
-    bind_rows(cell_data) |> distinct(binomial, precocity),
-    by = "binomial"
-  )
+  select(binomial, precocity)
+
+stopifnot(!anyDuplicated(union_trait_data$binomial))
 
 treelist <- build_treelist(union_trait_data)
 
