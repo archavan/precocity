@@ -5,7 +5,10 @@
 
 # Process the simmap output and plot the results.
 
+###############################################################################
 # setup =======================================================================
+###############################################################################
+
 library(phytools)
 library(tidyverse)
 library(here)
@@ -19,11 +22,15 @@ clrs <- c(
   precocial = '#91bfdb'
 )
 
-analysis_name <- "case78-plus-pantheria"
+analysis_name <- "main"
 resdir <- here("results/scm", analysis_name)
 figdir <- here("results/99_paper-figs")
 
+source(here("code/utilities_taxonomic.R"))
+
+###############################################################################
 # data ========================================================================
+###############################################################################
 # tipdata
 prec_data <- read_csv(here("data/03_coded/precocity.csv"))
 prec_data <- prec_data %>%
@@ -40,146 +47,64 @@ simmap_summary_consensus <- read_rds(here(
 ))
 
 # results from sampled trees
-asr <- tibble(tr_id = 1:100, tr_name = dir(here(resdir, "sample")))
-asr$tr_pruned <- lapply(asr$tr_name, \(x) {
-  read_rds(here(resdir, "sample", x, "tree_pruned.rds"))
-})
-asr$model_weights <- lapply(asr$tr_name, \(x) {
-  read_rds(here(resdir, "sample", x, "model-weights.rds"))
-})
-asr$ace <- lapply(asr$tr_name, \(x) {
-  read_rds(here(resdir, "sample", x, "ace.rds"))
-})
+asr <- read_csv(here(resdir, "posterior-prob.csv")) |>
+  filter(treetype == "sample")
 
 # taxonomic information =======================================================
-taxa <- prec_data %>%
-  select(
-    rank01,
-    rank02,
-    rank03,
-    rank04,
-    rank05,
-    rank06,
-    rank07,
-    rank08,
-    family,
-    binomial
-  )
+taxa <- prec_data |>
+  select(all_of(c(paste("rank0", 1:8, sep = ""), "family", "binomial")))
 
-###############################################################################
-# helper functions ############################################################
-###############################################################################
-
-get_taxonomic_rank <- function(.taxon) {
-  tax_rank <- names(which(apply(taxa, 2, \(x) any(grepl(.taxon, x)))))
-  if (length(tax_rank) == 0) {
-    stop("Taxon not found in data")
-  }
-  message(paste0(.taxon, " was found in the taxonomic rank: ", tax_rank))
-  return(tax_rank)
-}
-
-get_species_in_taxon <- function(.taxon) {
-  tax_rank <- get_taxonomic_rank(.taxon)
-  taxa$binomial[which(taxa[[tax_rank]] == .taxon)]
-}
-
-get_classification <- function(.taxon) {
-  ranks <- c("rank03", "rank05", "rank06", "rank07", "rank08", "family")
-  tax_rank <- get_taxonomic_rank(.taxon)
-  col_index <- which(names(taxa) == tax_rank)
-
-  # if the rank is low, we want to start from infraclass to keep things short
-  if (tax_rank %in% c("rank01", "rank02", "rank03")) {
-    shortpath <- tax_rank
-  } else {
-    shortpath <- ranks[seq_len(which(ranks == tax_rank))]
-  }
-
-  taxonomy <- taxa %>%
-    select(all_of(shortpath)) %>%
-    filter(.data[[tax_rank]] == .taxon) %>%
-    distinct()
-
-  stopifnot(nrow(taxonomy) == 1)
-
-  x <- unlist(taxonomy)
-  x <- x[!is.na(x)]
-  return(x)
-}
-
-get_node <- function(.phy, .taxon) {
-  spp_list <- get_species_in_taxon(.taxon)
-  getMRCA(.phy, spp_list)
-}
-
-get_pp_at_node <- function(.ace, .node) .ace[which(rownames(.ace) == .node), ]
-
-get_pp_df <- function(.taxon) {
-  map2_df(asr$tr_pruned, asr$ace, function(x, y) {
-    node <- get_node(x, .taxon)
-    get_pp_at_node(y, node)
-  }) %>%
-    mutate(tree_id = 1:n()) %>%
-    relocate(tree_id)
-}
-
+main_nodes <- c("Mammalia", "Eutheria", "Theria", "Prototheria", "Metatheria")
 
 ###############################################################################
 # posterior probability distributions #########################################
 ###############################################################################
 
-pp_df_main_nodes <- list(
-  Mammalia = get_pp_df("Mammalia"),
-  Eutheria = get_pp_df("Eutheria"),
-  Theria = get_pp_df("Theria"),
-  Prototheria = get_pp_df("Prototheria"),
-  Metatheria = get_pp_df("Metatheria")
-) %>%
-  bind_rows(.id = "clade") %>%
-  mutate(
-    clade = fct(
-      clade,
-      c("Mammalia", "Eutheria", "Theria", "Prototheria", "Metatheria")
-    )
-  ) %>%
+pp_df_main_nodes <- asr |>
+  filter(clade %in% main_nodes) |>
+  mutate(clade = fct(clade, main_nodes)) |>
   pivot_longer(
-    cols = c(altricial, intermediate, precocial),
+    cols = levels(prec_data$precocity),
     names_to = "precocity",
     values_to = "pp"
   )
 
-
 ppdist_main_nodes_faceted <- ggplot(
   pp_df_main_nodes,
-  aes(tree_id, pp, fill = precocity)
+  aes(treeindex, pp, fill = precocity)
 ) +
   geom_col(width = 0.9, linewidth = 0) +
   facet_grid(cols = vars(clade)) +
   scale_fill_manual(values = clrs, guide = "none") +
   labs(y = "Posterior probability", x = "Sampled tree") +
   theme_half_open(
-    font_family = "Source Sans Pro",
+    font_family = "Source Sans 3",
     line_size = 0.25,
     font_size = 6,
     rel_small = 5.5 / 6,
     rel_tiny = 5 / 6,
     rel_large = 7 / 6
   ) +
-  theme(strip.background = element_blank(), strip.text = element_text(size = 7))
+  theme(
+    strip.background = element_blank(),
+    strip.text = element_text(size = 7),
+    plot.tag = element_text(face = 2, family = "Source Sans 3", size = 8),
+    axis.title = element_text(size = 7),
+    axis.text = element_text(size = 6)
+  )
 
 ###############################################################################
 # ancestral states on the consensus phylogeny #################################
 ###############################################################################
 
 add_cladelab <- function(.taxon, ln.offset, lab.offset, text = NULL, ...) {
-  stopifnot(length(get_species_in_taxon(.taxon)) > 1)
+  stopifnot(length(get_species_in_taxon(.taxon, taxa)) > 1)
   if (is.null(text)) {
     text <- .taxon
   }
   arc.cladelabels(
     text = text,
-    node = get_node(tr_consensus, .taxon),
+    node = get_node(tr_consensus, .taxon, taxa),
     stretch = 1,
     cex = 1,
     mark.node = FALSE,
@@ -208,19 +133,19 @@ plot_asr_results <- function() {
     y = max(pp$y.lim),
     xjust = 0,
     yjust = 1,
-    levels(prec_tipdata),
+    str_to_sentence(levels(prec_tipdata)),
     pch = 21,
-    pt.cex = 3,
+    pt.cex = 2.5,
     pt.bg = clrs,
     bty = "n",
-    cex = 1.4
+    cex = 1.2
   )
 
   nodelabels(
-    node = get_node(tr_consensus, "Eutheria"),
+    node = get_node(tr_consensus, "Eutheria", taxa),
     text = "Eutheria",
     frame = "none",
-    cex = 1.2,
+    cex = 1.3,
     adj = c(-0.2, 0.5)
   )
 
@@ -244,9 +169,9 @@ plot_asr_results <- function() {
     node = getMRCA(
       tr_consensus,
       c(
-        get_species_in_taxon("Odobenidae"),
-        get_species_in_taxon("Otariidae"),
-        get_species_in_taxon("Phocidae")
+        get_species_in_taxon("Odobenidae", taxa),
+        get_species_in_taxon("Otariidae", taxa),
+        get_species_in_taxon("Phocidae", taxa)
       )
     ),
     ln.offset = 1.02,
@@ -261,8 +186,9 @@ plot_asr_results <- function() {
     node = getMRCA(
       tr_consensus,
       c(
-        get_species_in_taxon("Soricidae"), # Solenodontidae and Talpidae not in data
-        get_species_in_taxon("Erinaceidae")
+        get_species_in_taxon("Soricidae", taxa),
+        get_species_in_taxon("Erinaceidae", taxa)
+        # Solenodontidae and Talpidae not in data
       )
     ),
     ln.offset = 1.06,
@@ -276,7 +202,11 @@ plot_asr_results <- function() {
     text = "Herpestoidea",
     node = getMRCA(
       tr_consensus,
-      c(get_species_in_taxon("Herpestidae"), get_species_in_taxon("Hyaenidae"))
+      c(
+        get_species_in_taxon("Eupleridae", taxa),
+        get_species_in_taxon("Herpestidae", taxa),
+        get_species_in_taxon("Hyaenidae", taxa)
+      )
     ),
     ln.offset = 1.02,
     lab.offset = 1.04,
@@ -300,14 +230,18 @@ plot_asr_results <- function() {
     node = getMRCA(
       tr_consensus,
       c(
-        get_species_in_taxon("Caviidae"),
-        get_species_in_taxon("Cuniculidae"),
-        get_species_in_taxon("Ctenomyidae"),
-        get_species_in_taxon("Dasyproctidae"),
-        get_species_in_taxon("Chinchillidae"),
-        get_species_in_taxon("Erethizontidae"),
-        get_species_in_taxon("Echimyidae"),
-        get_species_in_taxon("Octodontidae")
+        get_species_in_taxon("Erethizontidae", taxa),
+        get_species_in_taxon("Caviidae", taxa),
+        get_species_in_taxon("Cuniculidae", taxa),
+        get_species_in_taxon("Dasyproctidae", taxa),
+        get_species_in_taxon("Dinomyidae", taxa),
+        get_species_in_taxon("Ctenomyidae", taxa),
+        get_species_in_taxon("Echimyidae", taxa),
+        get_species_in_taxon("Octodontidae", taxa),
+        get_species_in_taxon("Chinchillidae", taxa),
+        get_species_in_taxon("Capromyidae", taxa),
+        get_species_in_taxon("Myocastoridae", taxa)
+        # Abrocomidae not in data
       )
     ),
     ln.offset = 1.02,
@@ -318,12 +252,13 @@ plot_asr_results <- function() {
   )
 }
 
-cairo_pdf(
-  here(figdir, "fig_scm_a_consensus-asr.pdf"),
+quartz(
+  type = "pdf",
+  file = here(figdir, "fig_scm_a_consensus-asr.pdf"),
   width = 13.5,
   height = 7.5,
-  family = "Source Sans Pro",
-  pointsize = 10.5
+  family = "Source Sans 3",
+  pointsize = 11
 )
 par(omi = c(0, 0.5, 0, 0.4), mai = c(0, 0, 0, 0), xpd = NA)
 plot_asr_results()
@@ -336,8 +271,8 @@ png(
   units = "in",
   res = 600,
   type = "cairo",
-  family = "Source Sans Pro",
-  pointsize = 10.5
+  family = "Source Sans 3",
+  pointsize = 11
 )
 par(omi = c(0, 0.5, 0, 0.4), mai = c(0, 0, 0, 0), xpd = NA)
 plot_asr_results()
@@ -359,26 +294,28 @@ composed <- wrap_plots(
   plot_layout(ncol = 1, heights = c(4, 1)) +
   plot_annotation(tag_levels = "a") &
   theme(
-    plot.tag = element_text(face = 2, family = "Source Sans Pro", size = 8),
+    plot.tag = element_text(face = 2, family = "Source Sans 3", size = 8),
     plot.title = element_text(hjust = 0.5)
   )
 
-ggsave(
-  here(figdir, "fig_scm_composed_v1.png"),
-  composed,
+quartz(
+  type = "pdf",
+  file = here(figdir, "fig_scm_composed_v1.pdf"),
   width = 6.5,
   height = 5,
-  units = "in",
-  dpi = 600
+  family = "Source Sans 3"
 )
+print(composed)
+dev.off()
 
-ggsave(
-  here(figdir, "fig_scm_composed_v1.pdf"),
-  composed,
+quartz(
+  type = "png",
+  file = here(figdir, "fig_scm_composed_v1.png"),
   width = 6.5,
   height = 5,
-  units = "in",
-  device = cairo_pdf
+  dpi = 600,
+  family = "Source Sans 3"
 )
-
+print(composed)
+dev.off()
 # end =========================================================================
