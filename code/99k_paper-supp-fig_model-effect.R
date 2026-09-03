@@ -46,36 +46,34 @@ case78 <- read_csv(here(resdir, "case78/posterior-prob.csv")) |>
 # plot ========================================================================
 ###############################################################################
 
-bind_rows(
-  main = select(main, treeindex, weight_ER, altricial),
-  case78 = select(case78, treeindex, weight_ER, altricial),
-  .id = "dataset"
-) |>
-  mutate(dataset = fct(dataset, c("main", "case78"))) |>
-  ggplot(aes(weight_ER, altricial)) +
-  geom_point(size = 1, alpha = 0.5) +
-  facet_wrap(
-    vars(dataset),
-    scales = "free",
-    labeller = as_labeller(c(case78 = "Case (1978)", main = "Full dataset"))
-  ) +
-  scale_x_continuous(name = "AIC weight of ER model") +
-  scale_y_continuous(name = "PP(Altricial) at Eutheria node") +
-  theme_classic(base_family = "Source Sans 3", base_line_size = 0.25) +
-  theme(
-    strip.background = element_blank(),
-    strip.text = element_text(size = 7),
-    aspect.ratio = 1,
-    axis.text = element_text(size = 6),
-    axis.title = element_text(size = 7)
-  )
+plot_corr <- function(.dataset, .title) {
+  .dataset |>
+    ggplot(aes(weight_ER, altricial)) +
+    geom_point(size = 1, alpha = 0.5) +
+    scale_x_continuous(name = "AIC weight of ER model", n.breaks = 3) +
+    scale_y_continuous(name = "PP(Altricial) at Eutheria node") +
+    labs(title = .title) +
+    theme_classic(base_family = "Source Sans 3", base_line_size = 0.25) +
+    theme(
+      plot.title = element_text(size = 7, hjust = 0.5),
+      aspect.ratio = 1,
+      axis.text = element_text(size = 6),
+      axis.title = element_text(size = 7),
+      plot.tag = element_text(size = 8, face = "bold")
+    )
+}
+
+p_er <- wrap_plots(
+  plot_corr(.dataset = case78, "Case (1978)"),
+  plot_corr(.dataset = main, "Full dataset")
+) +
+  plot_annotation(tag_levels = "a")
 
 ggsave(
   here(figdir, "supp-fig_model-effect_ER-correlation.png"),
-  last_plot(),
+  p_er,
   width = 4,
   height = 2,
   dpi = 600
 )
-
 # end =========================================================================
